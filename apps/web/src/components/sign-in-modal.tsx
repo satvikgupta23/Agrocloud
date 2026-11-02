@@ -54,27 +54,32 @@ export function SignInModal({ open, onOpenChange }: SignInModalProps) {
             <DialogContent className="max-w-sm">
                 <DialogHeader className="text-center">
                     <DialogTitle className="text-2xl font-bold tracking-tight">
-                        {t("welcomeBack")}
+                        Crop Diagnostic Studio
                     </DialogTitle>
                     <DialogDescription>
-                        {t("signInDesc")}
+                        Instant crop photo analysis, soil pH detection, and live weather telemetry. No login required.
                     </DialogDescription>
                 </DialogHeader>
 
-                <Button
-                    variant="outline"
-                    className="w-full gap-3"
-                    onClick={() =>
-                        signIn("google", { callbackUrl: "/dashboard" })
-                    }
-                >
-                    <GoogleLogo className="h-5 w-5" />
-                    {t("signInWithGoogle")}
-                </Button>
+                <div className="space-y-3 pt-2">
+                    <Button
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-900/30"
+                        onClick={() => {
+                            onOpenChange(false);
+                            window.location.href = "/#crop-studio";
+                        }}
+                    >
+                        Launch Diagnostic Studio
+                    </Button>
 
-                <p className="text-center text-xs text-muted-foreground">
-                    {t("termsNotice")}
-                </p>
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Close
+                    </Button>
+                </div>
             </DialogContent>
         </Dialog>
     );

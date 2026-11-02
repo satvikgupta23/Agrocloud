@@ -15,6 +15,7 @@ from app.core.rate_limit import limiter
 from app.routers import (
     alerts,
     detection,
+    diagnostics,
     farms,
     fields,
     jobs,
@@ -93,6 +94,7 @@ app.include_router(uploads.router, prefix=PREFIX, tags=["uploads"])
 app.include_router(detection.router, prefix=PREFIX, tags=["detection"])
 app.include_router(weather.router, prefix=PREFIX, tags=["weather"])
 app.include_router(soil.router, prefix=PREFIX, tags=["soil"])
+app.include_router(diagnostics.router, prefix=PREFIX, tags=["crop-diagnostics"])
 
 
 # ── Health Check ─────────────────────────────────────────────────────

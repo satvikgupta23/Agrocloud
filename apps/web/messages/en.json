@@ -4,7 +4,7 @@
         "signOut": "Sign out",
         "getStarted": "Get started",
         "github": "GitHub",
-        "builtWith": "Built with OpenFarm",
+        "builtWith": "Built with AgroCloud",
         "dashboard": "Dashboard",
         "welcomeBack": "Welcome back",
         "signInDesc": "Sign in to access your farms and fields",
@@ -16,6 +16,7 @@
         "delete": "Delete"
     },
     "nav": {
+        "studio": "Soil & Crop Studio",
         "dashboard": "Dashboard",
         "farms": "Farms",
         "alerts": "Alerts",
@@ -37,15 +38,15 @@
         "cancel": "Cancel"
     },
     "landing": {
-        "badge": "Open source · BSD-3-Clause · self-hostable",
-        "heroTitle1": "Know what your field is doing -",
-        "heroTitle2": "and why",
-        "heroDesc": "OpenFarm is an open source crop intelligence platform: Sentinel-2 imagery, weather, soil and time fused into one explainable picture of every field you manage - with the observation, its size, its window, and the conditions behind it.",
-        "deployCta": "Deploy your own",
-        "demoCta": "Try the live demo",
-        "navHow": "How it works",
-        "navArchitecture": "Architecture",
-        "navSelfHost": "Self-host",
+        "badge": "AgroCloud Precision Agronomy Engine",
+        "heroTitle1": "AgroCloud Soil & Crop Intelligence",
+        "heroTitle2": "Real-Time Telemetry",
+        "heroDesc": "AgroCloud fuses live Open-Meteo weather and ISRIC SoilGrids 2.0 to detect soil type, pH, crop viability, and top crop recommendations.",
+        "deployCta": "Open Studio",
+        "demoCta": "Analyze Field",
+        "navHow": "Soil Viability",
+        "navArchitecture": "Telemetry",
+        "navSelfHost": "Precision Plan",
         "cardField": "Block A1 · 12.40 ha · rice",
         "cardDate": "8 Feb 2026",
         "cardSeverity": "High",
@@ -795,18 +796,18 @@
         "priorityLow": "Low"
     },
     "seo": {
-        "title": "OpenFarm: Open Source Crop Intelligence Platform",
-        "description": "Open source crop intelligence: Sentinel-2 imagery, weather and soil fused into explainable per-field insights. Self-hostable, BSD-3-Clause, no API keys.",
-        "longDescription": "OpenFarm is an open source crop intelligence platform. It fuses Sentinel-2 satellite imagery, daily weather and soil data into per-field insights, and shows the evidence behind every alert: which index moved, over what window, and the conditions that explain it.",
+        "title": "AgroCloud: Multimodal Crop Intelligence & Diagnostics Platform",
+        "description": "AgroCloud crop intelligence: Crop photo diagnostics, live Open-Meteo weather and SoilGrids soil pH fused into explainable per-field insights. Self-hostable, no sign-in required.",
+        "longDescription": "AgroCloud is an open crop intelligence platform. It fuses crop photos, Sentinel-2 satellite imagery, daily weather and soil data into per-field insights, and shows the evidence behind every alert: which index moved, over what window, and the conditions that explain it.",
         "category": "Crop intelligence and remote sensing",
-        "featureList": "Sentinel-2 vegetation indices at 10 m | 24 months of history backfilled per field | Daily weather history and 7-day forecast | Soil properties by depth to 200 cm | Explained anomaly alerts | Field boundary detection from imagery | Self-hosted with Docker Compose | Multi-tenant with role-based access",
-        "ogHeadline": "Know what your field is doing, and why",
-        "ogSubhead": "Open source crop intelligence from satellite, weather and soil",
-        "ogAlt": "OpenFarm, open source crop intelligence from satellite, weather and soil",
+        "featureList": "Crop photo phenology and age detection | SoilGrids pH profile | Open-Meteo live weather and soil telemetry | Sentinel-2 vegetation indices at 10 m | 24 months of history backfilled per field | Explained anomaly alerts | Self-hosted with Docker Compose",
+        "ogHeadline": "AgroCloud - Know what your field is doing, and why",
+        "ogSubhead": "Open crop intelligence from photos, weather and soil",
+        "ogAlt": "AgroCloud, open crop intelligence from photos, weather and soil",
         "datasetDesc": {
-            "sentinel": "Multispectral optical imagery from the European Space Agency's Sentinel-2 mission: 13 bands at 10 to 60 m resolution with a five-day revisit at the equator. OpenFarm computes NDVI, EVI, SAVI and NDWI per scene from its red, near-infrared and short-wave infrared bands, and backfills 24 months of history for every field boundary.",
-            "weather": "Daily and hourly weather history and forecasts aggregated from national meteorological services. OpenFarm reads temperature, precipitation, evapotranspiration, wind and soil moisture from it, and derives growing degree days, reference evapotranspiration, water balance and a drought index for each field.",
-            "soil": "Global soil property maps predicted at 250 m resolution from a compilation of soil profile observations and environmental covariates. OpenFarm reads texture, pH, organic carbon, cation exchange capacity, bulk density and available water capacity by depth layer down to 200 cm."
+            "sentinel": "Multispectral optical imagery from the European Space Agency's Sentinel-2 mission: 13 bands at 10 to 60 m resolution with a five-day revisit at the equator. AgroCloud computes NDVI, EVI, SAVI and NDWI per scene from its red, near-infrared and short-wave infrared bands, and backfills 24 months of history for every field boundary.",
+            "weather": "Daily and hourly weather history and forecasts aggregated from national meteorological services. AgroCloud reads temperature, precipitation, evapotranspiration, wind and soil moisture from it, and derives growing degree days, reference evapotranspiration, water balance and a drought index for each field.",
+            "soil": "Global soil property maps predicted at 250 m resolution from a compilation of soil profile observations and environmental covariates. AgroCloud reads texture, pH, organic carbon, cation exchange capacity, bulk density and available water capacity by depth layer down to 200 cm."
         }
     },
     "faq": {

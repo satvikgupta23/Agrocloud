@@ -18,9 +18,7 @@ import {
     PanelLeftOpen,
     Menu,
     X,
-    Leaf,
-    Plus,
-    Loader2,
+    Leaf,    Sprout,    Plus,    Loader2,
     ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +52,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
+    { href: "/" as const, labelKey: "studio" as const, customLabel: "Soil & Crop Studio", icon: Sprout },
     { href: "/dashboard" as const, labelKey: "dashboard" as const, icon: LayoutDashboard },
     { href: "/farms" as const, labelKey: "farms" as const, icon: Tractor },
     { href: "/alerts" as const, labelKey: "alerts" as const, icon: Bell },
@@ -169,9 +168,9 @@ export function Sidebar() {
                     )}>
                         {expanded && (
                             <div className="flex items-center gap-2">
-                                <Leaf className="h-7 w-7 shrink-0 text-primary" />
-                                <span className="text-lg font-bold tracking-tight whitespace-nowrap">
-                                    OpenFarm
+                                <Leaf className="h-7 w-7 shrink-0 text-emerald-400" />
+                                <span className="text-lg font-bold tracking-tight whitespace-nowrap bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                                    AgroCloud
                                 </span>
                             </div>
                         )}
@@ -432,8 +431,10 @@ function MobileSidebar({
     return (
         <div className="flex h-full flex-col">
             <div className="flex items-center gap-2 px-4 py-5">
-                <Leaf className="h-7 w-7 text-primary" />
-                <span className="text-lg font-bold tracking-tight">OpenFarm</span>
+                <Leaf className="h-7 w-7 text-emerald-400" />
+                <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                    AgroCloud
+                </span>
             </div>
             <Separator />
             <div className="px-3 py-3">

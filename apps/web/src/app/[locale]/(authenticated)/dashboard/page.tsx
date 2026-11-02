@@ -16,6 +16,7 @@ import {
     ChevronRight,
     Bell,
     CheckCircle2,
+    Sparkles,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CreateFarmModal } from "@/components/create-farm-modal";
@@ -124,11 +125,41 @@ export default function DashboardPage() {
     return (
         <div className="p-6 lg:p-8 max-w-6xl mx-auto">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                    {t("welcomeTo", { orgName: currentOrg?.name ?? "" })}
-                </p>
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+                    <p className="mt-1 text-[13px] text-muted-foreground">
+                        {t("welcomeTo", { orgName: currentOrg?.name ?? "" })}
+                    </p>
+                </div>
+
+                <Link href="/">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md gap-2">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        AgroCloud Soil & Crop Studio
+                    </Button>
+                </Link>
+            </div>
+
+            {/* AgroCloud Studio Feature Card */}
+            <div className="mb-8 p-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <span className="text-xs uppercase font-bold text-emerald-400 tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        AgroCloud Precision Agronomy
+                    </span>
+                    <h2 className="text-base font-bold text-foreground">
+                        Soil Viability, Recommended Crops & Rainfall Water Balance
+                    </h2>
+                    <p className="text-xs text-muted-foreground max-w-2xl">
+                        Upload soil or crop photos with GPS coordinates to evaluate soil pH, texture, weather, season, and rainfall compatibility with 68 agronomic crop profiles.
+                    </p>
+                </div>
+                <Link href="/" className="shrink-0">
+                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md">
+                        Open Diagnostic Studio
+                    </Button>
+                </Link>
             </div>
 
             {/* Stats. Open alerts is the only tinted metric - one coloured

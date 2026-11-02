@@ -172,12 +172,17 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
     const [signInOpen, setSignInOpen] = useState(false);
 
     useEffect(() => {
-        if (searchParams.get("signin") === "true" && !isAuthenticated) {
-            setSignInOpen(true);
-        }
+        // No auto-opening of signin modal
     }, [searchParams, isAuthenticated]);
 
-    const openApp = () => setSignInOpen(true);
+    const openApp = () => {
+        const el = document.getElementById("crop-studio");
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth" });
+        } else {
+            window.location.href = "/dashboard";
+        }
+    };
 
     const NAV = [
         { href: "#how-it-works", label: t("navHow") },
@@ -246,11 +251,17 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             <header className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur">
                 <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
                     <Link href="/" className="flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
-                        <Leaf className="h-5 w-5 text-primary" strokeWidth={2} />
-                        OpenFarm
+                        <Leaf className="h-5 w-5 text-emerald-500" strokeWidth={2.2} />
+                        <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">AgroCloud</span>
                     </Link>
 
                     <div className="flex items-center gap-5">
+                        <a
+                            href="#crop-studio"
+                            className="text-[13px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                            Crop Diagnostic Studio
+                        </a>
                         {NAV.map((item) => (
                             <a
                                 key={item.href}
@@ -260,21 +271,10 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                                 {item.label}
                             </a>
                         ))}
-                        <a
-                            href={REPO}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hidden items-center gap-2 whitespace-nowrap text-[13px] transition-colors hover:text-primary sm:inline-flex"
-                        >
-                            <Github className="h-4 w-4" />
-                            {tc("github")}
-                        </a>
-                        <Button size="sm" asChild>
-                            {isAuthenticated ? (
-                                <Link href="/dashboard">{tc("dashboard")}</Link>
-                            ) : (
-                                <button onClick={openApp}>{tc("signIn")}</button>
-                            )}
+                        <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium">
+                            <a href="#crop-studio">
+                                Launch Studio
+                            </a>
                         </Button>
                     </div>
                 </nav>

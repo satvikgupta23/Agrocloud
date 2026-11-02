@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { LandingPage } from "@/components/landing-page";
+import { CropDiagnosticStudio } from "@/components/crop-diagnostic-studio";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { FAQ_IDS } from "@/lib/faq";
 import { DISCORD_URL, REPO_URL, SAME_AS, SITE_NAME, SITE_URL, localeUrl } from "@/lib/site";
@@ -138,16 +138,44 @@ async function buildJsonLd(locale: string) {
 
 export default async function Home({ params }: { params: { locale: string } }) {
     setRequestLocale(params.locale);
-    const session = await getServerSession(authOptions);
     const jsonLd = await buildJsonLd(params.locale);
 
     return (
-        <>
+        <div className="min-h-screen bg-background text-foreground flex flex-col">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
-            <LandingPage isAuthenticated={!!session} />
-        </>
+            {/* AgroCloud Navigation Header */}
+            <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur-md">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-sm">
+                            <span className="font-bold text-lg leading-none">☁</span>
+                        </div>
+                        <div>
+                            <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 bg-clip-text text-transparent">
+                                AgroCloud
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block -mt-1 font-mono tracking-wider uppercase">
+                                Soil & Crop Intelligence Engine
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Open-Meteo & SoilGrids Connected
+                        </span>
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Application: AgroCloud Studio terminating at Precision Action Plan */}
+            <main className="flex-1 w-full bg-gradient-to-b from-surface-2/30 via-background to-background pb-12">
+                <CropDiagnosticStudio />
+            </main>
+        </div>
     );
 }

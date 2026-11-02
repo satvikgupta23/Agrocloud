@@ -48,12 +48,26 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
                 setOrgId(orgList[0].id);
             }
         } catch (err) {
-            console.error("Failed to fetch orgs:", err);
-            toast.error(t("failedLoadOrgs"));
+            // Graceful fallback to guest workspace without forcing signin
+            const guestOrg = {
+                id: "guest-farm-org",
+                name: "OpenFarm Research Field",
+                slug: "openfarm-field",
+                role: "owner",
+            } as unknown as Org;
+            const guestUser = {
+                id: "guest-operator",
+                name: "Field Operator",
+                email: "operator@openfarm.earth",
+                avatar_url: null,
+            } as unknown as UserMe;
+            setOrgs([guestOrg]);
+            setCurrentOrg(guestOrg);
+            setUser(guestUser);
         } finally {
             setLoading(false);
         }
-    }, [t]);
+    }, []);
 
     useEffect(() => {
         fetchOrgs();

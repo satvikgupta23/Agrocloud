@@ -17,7 +17,7 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3
     "",
 );
 
-export const SITE_NAME = "OpenFarm";
+export const SITE_NAME = "AgroCloud";
 export const REPO_URL = "https://github.com/superzero11/OpenFarm";
 export const DISCORD_URL = "https://discord.gg/KM9qxpEmsU";
 
