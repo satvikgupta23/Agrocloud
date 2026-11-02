@@ -1,239 +1,220 @@
 <div align="center">
 
-# OpenFarm
+# 🌾 AgroCloud
 
-<img src="apps/web/public/logo.svg" alt="OpenFarm Logo" width="120" />
+### Next-Generation Cloud Platform for Precision Agriculture & Field Intelligence
 
-### Open Intelligence for Every Farm
+[![GitHub Repo](https://img.shields.io/badge/GitHub-satvikgupta23%2FAgrocloud-blue?logo=github)](https://github.com/satvikgupta23/Agrocloud)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-green.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black?logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-Open source self-hostable and reproducible Crop Intelligence Platform
-
-[![CI](https://github.com/superzero11/OpenFarm/actions/workflows/ci.yml/badge.svg)](https://github.com/superzero11/OpenFarm/actions/workflows/ci.yml)
-[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
-![Open Source](https://img.shields.io/badge/Open%20Source-Yes-brightgreen)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
-
-[![GitHub stars](https://img.shields.io/github/stars/superzero11/OpenFarm?style=social)](https://github.com/superzero11/OpenFarm)
-[![Discord](https://img.shields.io/discord/1480056202829234379?color=7289da&label=Discord&logo=discord&logoColor=white)](https://discord.gg/KM9qxpEmsU)
-[![Patreon](https://img.shields.io/badge/Patreon-Support%20Us-F96854?logo=patreon&logoColor=white)](https://www.patreon.com/c/SuperZero11)
-
-**[Live Demo](https://openfarm.earth)** · [Report Bug](https://github.com/superzero11/OpenFarm/issues) · [Request Feature](https://github.com/superzero11/OpenFarm/issues)
-
-<p>
-  <img src="apps/web/public/screenshots/openfarm-1.png" width="49%" />
-  <img src="apps/web/public/screenshots/openfarm-2.png" width="49%" />
-</p>
-<p>
-  <img src="apps/web/public/screenshots/openfarm-3.png" width="49%" />
-  <img src="apps/web/public/screenshots/openfarm-4.png" width="49%" />
-</p>
+**AgroCloud** fuses satellite observation, live hyper-local weather telemetry, soil science, and computer-vision diagnostics to deliver explainable, data-driven agricultural intelligence.
 
 </div>
 
-**OpenFarm is an open, modular field intelligence platform that fuses satellite, weather, soil, and time to explain what is happening in a field - and why.**
+---
 
-- **Vision:** A world where every farm, from smallholders to enterprises, can access transparent, trustworthy, and affordable digital farming intelligence.
-- **Mission:** Build and maintain an open, reproducible crop intelligence platform that turns satellite, weather, soil, and field data into actionable insights - deployable anywhere (self-hosted or hosted).
+## 📌 Overview
 
-## Why OpenFarm
-- Self-hostable stack with clear service boundaries (Next.js ↔ FastAPI ↔ TiTiler ↔ MinIO ↔ PostGIS)
-- Multi-index vegetation monitoring - NDVI, EVI, SAVI (configurable L factor), and NDWI from Sentinel-2 imagery with automatic 24-month historical backfill
-- ML-powered automatic field boundary detection (FTW model) with interactive review workflow
-- Daily weather data with agricultural indices (GDD, water balance, drought index) via Open-Meteo
-- Soil intelligence - automatic soil profile ingestion from SoilGrids (global, 250m) and POLARIS (US, 30m) with crop suitability scoring (68 crops), sampling zone recommendations, carbon sequestration estimation, nutrient risk classification, and soil×weather stress monitoring
-- Reproducible pipeline with provenance (Element84 STAC → COG → TiTiler tiles)
-- Tenant isolation via `X-Org-Id` + JWT; RBAC (`owner`/`admin`/`member`/`viewer`)
-- MapLibre + PMTiles (no Mapbox token needed), ECharts for time series
-- Open, permissive BSD-3-Clause license
+**AgroCloud** is a modular precision agronomy and crop intelligence platform designed to bridge the gap between raw environmental sensors, satellite telemetry, and actionable farm-level insights.
 
-## Prerequisites
-- Docker + Docker Compose v2
-- Node.js 20+ and npm 10+ (for local web development)
-- Python 3.11+ and pip (for local API development)
-- Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
+Rather than only showing that vegetation health has dropped, AgroCloud correlates multi-spectral imagery with live meteorological data (temperature, rainfall, evapotranspiration) and soil physical chemistry (texture, pH, organic carbon) to explain **why** changes occur (e.g., distinguishing acute water stress from fungal infections before chemical sprays are misapplied).
 
-## Architecture
+---
 
-OpenFarm follows a 3-layer strategic architecture:
+## ✨ Key Features
+
+### 🔬 1. Soil & Crop Diagnostic Studio
+* **Interactive Diagnostic Studio:** Instant upload or camera capture for multi-spectral crop leaf and soil photo analysis.
+* **68 Calibrated Agro-Ecological Crop Profiles:** Comprehensive models covering cereals, pulses, vegetables, oilseeds, cash crops, and horticulture (Wheat, Paddy/Rice, Maize, Cotton, Tomato, Soybean, Mustard, Sugarcane, Grapevine, etc.).
+* **Live Weather & Soil Telemetry:** Integrates directly with **Open-Meteo** and **ISRIC SoilGrids 2.0**:
+  * Real-time ambient temperature, humidity, wind velocity, and precipitation.
+  * Sub-surface soil temperature ($0\,\text{cm}$ and $6\,\text{cm}$) and volumetric soil moisture ($0\text{--}1\,\text{cm}$, $1\text{--}3\,\text{cm}$).
+  * Cumulative **Growing Degree Days (GDD)** and reference **Evapotranspiration ($\text{ET}_0$)**.
+  * Soil chemical and physical parameters: pH, Soil Organic Carbon (SOC), Cation Exchange Capacity (CEC), and USDA texture classification (clay/sand/silt).
+* **Automated Agronomic Recommendations:** Actionable guidance for fertilizer application (NPK schedules), irrigation timing, soil amendment suggestions, and disease/stress remedies.
+
+### 🛰️ 2. Multi-Spectral Satellite Field Monitoring
+* **Vegetation & Water Indices:** Automatic computation of **NDVI**, **EVI**, **SAVI** (with calibrated soil adjustment factor $L$), and **NDWI** derived from ESA **Sentinel-2** 10-meter imagery.
+* **Automated STAC Ingestion:** Element 84 Earth Search STAC catalog integration with 24-month historical backfill and weekly auto-update cycles.
+* **ML Field Boundary Detection:** Automatic field boundary extraction using the FTW (Fields of The World) deep learning model with polygon review workflows.
+
+### 📊 3. Agronomic Risk & Multi-Signal Stress Engine
+* **Water Balance & Stress Attribution:** Real-time water balance tracking ($\text{Rainfall} - \text{ET}_0$) to separate drought stress from pathology.
+* **Soil Health Risk Indicators:** Automatic computation of acidification, compaction, nutrient leaching, waterlogging, and rooting impediment risks.
+* **Smart Soil Sampling Zones:** Clustered zone recommendations based on intra-field spatial variability.
+* **Carbon Sequestration Estimation:** Baseline topsoil carbon stock calculations across field boundaries.
+
+### 🌐 4. Enterprise-Grade Delivery Surfaces
+* **MapLibre GL Vector & Raster Mapping:** High-performance mapping with PMTiles basemaps, custom index colormaps, and interactive field polygon inspection.
+* **Interactive Time-Series (Apache ECharts):** Percentile distribution bands, NDVI timelines, and overlaid meteorological graphs.
+* **Multi-Tenant Organization Architecture:** Tenant isolation via `X-Org-Id` and JWT session headers with granular RBAC (`owner`, `admin`, `member`, `viewer`).
+* **Internationalization & Themes:** Full bilingual support (English and Spanish) and native dark/light theme switching.
+
+---
+
+## 🏗️ Architecture
+
+AgroCloud follows a decoupled, 3-layer service-oriented architecture:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Layer C - Delivery Surfaces                   (Distribution)  │
-│  Map UI · Reports · API · Webhooks · MCP · Mobile scouting     │
-├─────────────────────────────────────────────────────────────────┤
-│  Layer B - Intelligence Engine                       (Moat)    │
-│  Phenology · Anomaly detection · Stress signals · Yield        │
-│  Risk models · Soil-derived insights · Explainability          │
-├─────────────────────────────────────────────────────────────────┤
-│  Layer A - Observation Infrastructure         (Data Gravity)   │
-│  Satellite · Weather · Soil · Field boundaries · Sensors       │
-└─────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Layer C: Delivery Surfaces                      │
+│   Next.js 14 Web UI · Soil & Crop Studio · MapLibre Maps · REST API    │
+├────────────────────────────────────────────────────────────────────────┤
+│                     Layer B: AgroCloud Intelligence                    │
+│   Crop Suitability (4-Pillar Model) · Phenology · Anomaly Alerts       │
+│   Diagnostic Studio Engine · Water Balance · Soil Risk Modeling        │
+├────────────────────────────────────────────────────────────────────────┤
+│                    Layer A: Environmental Observation                  │
+│   Copernicus Sentinel-2 · Open-Meteo Telemetry · ISRIC SoilGrids 2.0   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Layer A** collects, standardizes, and stores raw signals (satellite imagery, weather, soil profiles, field boundaries)
-- **Layer B** transforms observations into explainable, agronomically meaningful insights with confidence scores
-- **Layer C** delivers intelligence through maps, reports, APIs, and integrations
+### Technology Stack
 
-**Tech stack:**
-```
-apps/web/       → Next.js 14 + NextAuth (Google OAuth) + Tailwind + shadcn/ui + MapLibre + ECharts
-services/api/   → FastAPI + SQLAlchemy 2.0 (async) + Alembic + Celery tasks
-services/tiler/ → TiTiler COG tile server (shared JWT auth)
-docker-compose.yml → Postgres/PostGIS, Redis, MinIO, API, Celery worker, TiTiler, Web
-```
+| Layer | Technologies |
+|---|---|
+| **Web Frontend** | [Next.js 14](https://nextjs.org/) (App Router), [React 18](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), [MapLibre GL](https://maplibre.org/), [Apache ECharts](https://echarts.apache.org/) |
+| **Backend Services** | [FastAPI](https://fastapi.tiangolo.com/), [Python 3.11](https://python.org/), [Pydantic v2](https://docs.pydantic.dev/), [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (async), [Alembic](https://alembic.sqlalchemy.org/) |
+| **Telemetry & Data** | [Open-Meteo API](https://open-meteo.com/), [ISRIC SoilGrids 2.0](https://soilgrids.org/), [Element 84 STAC](https://element84.com/earth-search/), [Sentinel-2](https://dataspace.copernicus.eu) |
+| **Geospatial & Storage** | [TiTiler](https://developmentseed.org/titiler/) (Cloud-Optimized GeoTIFFs), [PostgreSQL](https://www.postgresql.org/) / [PostGIS](https://postgis.net/), [MinIO](https://min.io/) S3 object storage |
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full strategic architecture document.
+---
 
-## Quick Start (Full Stack via Docker)
+## 🚀 Getting Started
+
+### Prerequisites
+* **Node.js**: v20+ and **npm** v10+
+* **Python**: v3.11+
+* *(Optional)* **Docker & Docker Compose**: For containerized deployment
+
+---
+
+### Local Development Setup
+
+#### 1. Clone the Repository
 ```bash
+git clone https://github.com/satvikgupta23/Agrocloud.git
+cd Agrocloud
+```
+
+#### 2. Configure Environment Variables
+Copy the example environment files for both services:
+```bash
+# Root environment file
 cp .env.example .env
-# Fill GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
-# Generate secrets:
-#   NEXTAUTH_SECRET:     openssl rand -base64 32
-#   OPENFARM_JWT_SECRET: openssl rand -base64 64
 
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Web environment
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-Services:
-| Service | URL | Purpose |
-|---|---|---|
-| Web (Next.js) | http://localhost:3000 | Frontend UI |
-| API (FastAPI) | http://localhost:8000 | Backend API |
-| API Docs | http://localhost:8000/docs | Swagger UI |
-| TiTiler | http://localhost:8080 | COG tiles |
-| MinIO Console | http://localhost:9001 | Object storage admin |
-
-Health checks:
-```bash
-curl http://localhost:8000/healthz    # API
-curl http://localhost:8080/healthz    # TiTiler
-curl http://localhost:3000/api/health # Web
-```
-
-## Local Development
-
-### Frontend (apps/web)
+#### 3. Run the Next.js Frontend
 ```bash
 cd apps/web
 npm install
-npm run dev          # start dev server
-npm run lint         # ESLint
-npm run type-check   # TypeScript (no emit)
-npm run build        # production build
+npm run dev
 ```
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
-### Backend (services/api)
+#### 4. Run the FastAPI Backend
+In a separate terminal:
 ```bash
 cd services/api
-pip install -e ".[dev]"   # includes ruff
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
 
-ruff check .              # lint
-ruff format --check .     # format check
+# Create & activate a virtual environment (Windows PowerShell)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -e ".[dev]"
+
+# Start Uvicorn ASGI server
+python -m uvicorn app.main:app --reload --port 8000
+```
+* **API Documentation (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+* **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+---
+
+### Full Stack via Docker Compose
+To launch the entire platform stack including PostgreSQL/PostGIS, Redis, MinIO, TiTiler, FastAPI, and Next.js:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-### Database Migrations
-```bash
-cd services/api
-alembic revision --autogenerate -m "describe change"
-alembic upgrade head
+---
 
+## 📁 Repository Structure
+
+```text
+Agrocloud/
+├── apps/
+│   └── web/                               # Next.js 14 frontend application
+│       ├── messages/                      # Internationalization dictionaries (en, es)
+│       ├── public/
+│       │   └── samples/                   # Reference crop & soil sample imagery
+│       └── src/
+│           ├── app/
+│           │   ├── [locale]/              # Localized application routes & dashboard
+│           │   └── api/                   # Next.js serverless API routes
+│           │       ├── analyze-crop/      # Crop diagnostic engine
+│           │       ├── soil/              # SoilGrids telemetry proxy
+│           │       └── weather/           # Open-Meteo weather telemetry proxy
+│           ├── components/
+│           │   ├── crop-diagnostic-studio.tsx  # Soil & Crop Studio interface
+│           │   ├── landing-page.tsx            # Modern AgroCloud landing interface
+│           │   └── sidebar.tsx                 # Navigation & workspace management
+│           └── lib/                       # API clients, auth, and utilities
+├── services/
+│   ├── api/                               # FastAPI asynchronous REST backend
+│   │   ├── app/
+│   │   │   ├── core/                      # Config, security, rate limiting, logging
+│   │   │   ├── models/                    # SQLAlchemy database models
+│   │   │   ├── routers/                   # API route handlers
+│   │   │   │   ├── diagnostics.py         # AgroCloud crop & soil diagnostics
+│   │   │   │   ├── monitoring.py          # Satellite index analytics
+│   │   │   │   ├── weather.py             # Meteorological integrations
+│   │   │   │   └── soil.py                # Soil profile endpoints
+│   │   │   └── tasks/                     # Celery asynchronous background tasks
+│   │   └── pyproject.toml
+│   └── tiler/                             # TiTiler Cloud-Optimized GeoTIFF raster server
+├── docker-compose.yml                     # Multi-container production stack
+├── docker-compose.dev.yml                 # Local development overrides
+└── README.md
 ```
 
-## Developer Verification Checklist
-Run these before opening a PR:
+---
+
+## 🧪 Verification & Quality Checks
+
+Run code quality and type validation before committing:
 
 ```bash
-# Web
+# Frontend validation
 cd apps/web
-npm run lint
-npm run type-check
-npm run build
+npm run lint          # ESLint rules
+npm run type-check     # TypeScript strict compilation (tsc --noEmit)
+npm run build          # Production Next.js build
 
-# API
-cd ../../services/api
-ruff check .
-ruff format --check .
+# Backend validation
+cd services/api
+ruff check .           # Python linting
+ruff format --check .  # Code format check
 ```
 
-## API Conventions
-- All endpoints prefixed with `/v1`
-- Org-scoped endpoints require `X-Org-Id` header and JWT
-- Pagination envelope: `{ items, total, limit, offset }`
-- Soft delete via `deleted_at` column
-- Geometry stored as `MultiPolygon(4326)`; polygons auto-wrapped
-- Audit events on key actions (e.g., field_created)
+---
 
-## Feature Overview
+## 📜 License
 
-### Layer A - Observation
-- **Satellite Intelligence**: NDVI, EVI, SAVI (configurable L), NDWI from Sentinel-2 - STAC search → COG → TiTiler tiles → time-series stats, with automatic 24-month historical backfill and weekly auto-compute
-- **Weather Intelligence**: daily historical + 7-day forecast via Open-Meteo - temperature, precipitation, ET₀, soil moisture/temperature, VPD, GDD, water balance, drought index
-- **Soil Intelligence**: automatic soil profile from SoilGrids (global, 250m) and POLARIS (US, 30m) - texture-by-depth, pH, organic carbon, CEC, bulk density, AWC, Rosetta PTF hydraulic properties, risk scoring, crop suitability (68 profiles, 4-pillar model), sampling zones, carbon estimation, nutrient context
-- **Boundary Detection**: ML-powered field boundary detection (FTW model) from Sentinel-2 - draw area, review with confidence scores, accept as fields
-- **Farms & Fields**: draw/upload GeoJSON/KML polygons, auto area calculation, soft delete
+Distributed under the **BSD 3-Clause License**. See [`LICENSE`](LICENSE) for full details.
 
-### Layer B - Intelligence
-- **Per-Index Alerts**: configurable threshold and drop-percentage rules, enriched with weather context and soil data
-- **Crop Suitability**: 4-pillar weighted scoring (Soil 40%, Water 25%, Climate 20%, Stress 15%) across 68 crop profiles with limiting factors
-- **Soil Intelligence**: nutrient risk zones, carbon sequestration potential, sampling zone recommendations, soil×weather stress indicators
-- **Risk Scoring**: acidification, compaction, leaching, waterlogging, and rooting risk from soil properties
-- **Multi-Signal Context**: alerts combine vegetation anomalies + weather conditions + soil characteristics
+---
 
-### Layer C - Delivery
-- **Interactive Map**: MapLibre + PMTiles (no Mapbox needed), multi-layer toggle, per-index colormaps, scouting and sampling zone markers with interactive popups
-- **Time-Series Charts**: ECharts with percentile bands, NDVI + weather overlay, soil depth visualization
-- **Scouting**: geotagged observations with photo upload and auto-attached weather snapshot
-- **Sharing**: read-only field health reports via share links with multi-index, weather, and soil summary
-- **Auth & RBAC**: Google OAuth → JWT bridge, owner/admin/member/viewer roles, audit logging
-- **i18n**: English + Spanish, dark/light theme
-- **Changelog**: in-app changelog page with version history
+## 👤 Author & Maintainer
 
-## Quality & CI
-- GitHub Actions: lint + type-check (`.github/workflows/ci.yml`)
-- Frontend: `npm run lint`, `npm run type-check`
-- Backend: `ruff check`, `ruff format --check`
-- No tests yet - contributions welcome
-
-## Deployment
-See [DEPLOYMENT.md](DEPLOYMENT.md) for a step-by-step guide to deploy on a free Oracle Cloud VM (or any VPS) with Docker Compose + Caddy auto-SSL.
-
-## Roadmap
-See [ROADMAP.md](ROADMAP.md) for the full development plan - what's done, what's in progress, and where contributors can help most.
-
-## Contributing & Security
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, style, and PR process
-- See [DESIGN.md](DESIGN.md) for the design system - read it before any UI change. Tokens, colour bindings, typography, spacing, icons, components and charts. No raw colours or sizes outside the token layer
-- See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards
-- See [SECURITY.md](SECURITY.md) to report vulnerabilities (via [GitHub private reporting](https://github.com/superzero11/OpenFarm/security/advisories/new))
-
-## Acknowledgements
-
-OpenFarm is a thin layer over decades of open source and open data. These projects do the hard parts, and every one of them is free for anyone to use.
-
-**Data and imagery**
-- [Copernicus Sentinel-2](https://dataspace.copernicus.eu) (ESA) - 10 m multispectral imagery
-- [Element 84 Earth Search](https://element84.com/earth-search/) - public STAC catalogue
-- [Open-Meteo](https://open-meteo.com) - daily weather history and forecast
-- [ISRIC SoilGrids](https://soilgrids.org) - global soil properties at 250 m
-- [POLARIS](https://registry.opendata.aws/polaris/) - US soil properties at 30 m
-- [Fields of The World](https://fieldsofthe.world) - field boundary detection model
-- [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors and [Protomaps](https://protomaps.com) - basemap data and tiles
-
-**Backend**
-[Python](https://www.python.org), [FastAPI](https://fastapi.tiangolo.com), [SQLAlchemy](https://www.sqlalchemy.org), [Alembic](https://alembic.sqlalchemy.org), [Celery](https://docs.celeryq.dev), [PostgreSQL](https://www.postgresql.org), [PostGIS](https://postgis.net), [Redis](https://redis.io), [MinIO](https://min.io), [GDAL](https://gdal.org), [rasterio](https://rasterio.readthedocs.io), [TiTiler](https://developmentseed.org/titiler/), [PyTorch](https://pytorch.org), [TorchGeo](https://torchgeo.readthedocs.io), and the wider [OSGeo](https://www.osgeo.org) ecosystem.
-
-**Frontend**
-[Next.js](https://nextjs.org), [React](https://react.dev), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com), [Lucide](https://lucide.dev), [MapLibre GL](https://maplibre.org), [Apache ECharts](https://echarts.apache.org), [Auth.js](https://authjs.dev), [next-intl](https://next-intl.dev).
-
-**Infrastructure**
-[Docker](https://www.docker.com), [Caddy](https://caddyserver.com), [Terraform](https://www.terraform.io), [Ubuntu](https://ubuntu.com), [GitHub Actions](https://github.com/features/actions).
-
-**Hosting**
-[Oracle Cloud Infrastructure](https://www.oracle.com/cloud/free/) runs the live demo at [openfarm.earth](https://openfarm.earth) on an Always Free Ampere instance - the same 2 OCPU and 12 GB anyone can claim, which is also the deployment target Terraform provisions in [deploy/terraform](deploy/terraform).
-
-## License
-
-BSD-3-Clause - see [LICENSE](LICENSE)
+* **Satvik Gupta** – [@satvikgupta23](https://github.com/satvikgupta23)
+* **Repository:** [https://github.com/satvikgupta23/Agrocloud](https://github.com/satvikgupta23/Agrocloud)
