@@ -35,6 +35,12 @@ import {
     Gauge,
     SwitchCamera,
     X,
+    ShieldAlert,
+    ShieldCheck,
+    Bug,
+    Pill,
+    Stethoscope,
+    FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -113,6 +119,51 @@ interface RecommendedCrop {
     isInSeason?: boolean;
 }
 
+interface CropHealthAnalysisData {
+    hasCropPhoto: boolean;
+    cropName: string;
+    hindiName: string;
+    scientificName: string;
+    overallHealthScore: number;
+    healthStatus: "Healthy" | "Mild Stress" | "Moderate Disease" | "Severe Infection";
+    healthStatusColor: string;
+    primaryDisease: {
+        id: string;
+        name: string;
+        hindiName: string;
+        pathogen: string;
+        pathogenType: string;
+        severity: string;
+        confidence: number;
+        symptomsObserved: string[];
+        pathologyNotes: string;
+    };
+    secondaryStress: string;
+    weatherAttribution: string;
+    fastActingChemicals: Array<{
+        activeIngredient: string;
+        commercialBrand: string;
+        dosagePerLiter: string;
+        applicationMethod: string;
+    }>;
+    organicBioRemedies: Array<{
+        name: string;
+        type: string;
+        dosagePerLiter: string;
+        preparationNotes: string;
+    }>;
+    preventativePractices: Array<{
+        title: string;
+        description: string;
+    }>;
+    visualMetrics: {
+        greenCanopyPct: number;
+        chlorosisPct: number;
+        necrosisPct: number;
+        lesionDensity: string;
+    };
+}
+
 interface DiagnosticResponse {
     success: boolean;
     photoType: "soil" | "crop";
@@ -120,6 +171,7 @@ interface DiagnosticResponse {
     currentIndianSeason: string;
     activeIndianSeasonName?: string;
     regionName?: string;
+    gpsCoordinates?: { lat: number; lon: number };
     targetCrop: {
         key: string;
         commonName: string;
@@ -155,13 +207,19 @@ interface DiagnosticResponse {
     soilVisualDiagnosis?: {
         indianSoilClassification: string;
         detectedSoilType: string;
+        soilOrder?: string;
         soilColorMunsell: string;
         structuralTilth: string;
         visualOrganicMatterEst: string;
         surfaceCrustingRisk: string;
         drainageAeration: string;
         phVerdictNote?: string;
+        nitrogenStatus?: string;
+        phosphorusStatus?: string;
+        potassiumStatus?: string;
+        salinityRisk?: string;
     } | null;
+    cropHealthAnalysis?: CropHealthAnalysisData | null;
     topRecommendedCrops: RecommendedCrop[];
     topVegetables?: RecommendedCrop[];
     topFruits?: RecommendedCrop[];
@@ -248,166 +306,83 @@ function extractPixelMetricsFromCanvas(canvas: HTMLCanvasElement): ImageAnalysis
 function extractPixelMetricsFromImage(img: HTMLImageElement): ImageAnalysisData {
     try {
         const canvas = document.createElement("canvas");
-        canvas.width = Math.min(100, img.naturalWidth || 100);
-        canvas.height = Math.min(100, img.naturalHeight || 100);
+        canvas.width = img.naturalWidth || img.width || 300;
+        canvas.height = img.naturalHeight || img.height || 300;
         const ctx = canvas.getContext("2d");
-        if (!ctx) {
-            return { avgR: 125, avgG: 110, avgB: 95, hue: 32, saturation: 0.25, brightness: 0.49, luminance: 112 };
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        if (!ctx) return { avgR: 125, avgG: 110, avgB: 95, hue: 32, saturation: 0.25, brightness: 0.49, luminance: 112 };
+        ctx.drawImage(img, 0, 0);
         return extractPixelMetricsFromCanvas(canvas);
     } catch {
         return { avgR: 125, avgG: 110, avgB: 95, hue: 32, saturation: 0.25, brightness: 0.49, luminance: 112 };
     }
 }
 
-// 6 Dedicated Indian Soil Presets (Verified Local JPEGs)
-const INDIAN_SOIL_PRESETS = [
-    {
-        id: "soil-alluvial-punjab",
-        title: "Alluvial Loam (जलोढ़ मिट्टी)",
-        region: "Punjab / Indo-Gangetic Plains",
-        lat: 30.9,
-        lon: 75.8,
-        ph: 7.2,
-        imageUrl: "/samples/soil-alluvial-punjab.jpg",
-        description: "Fertile river silt loam. Ideal for Wheat, Paddy, Mustard, Sugarcane, Potato.",
-        suggestedCrop: "wheat",
-    },
-    {
-        id: "soil-black-cotton",
-        title: "Black Cotton Soil / Regur (काली मिट्टी)",
-        region: "Maharashtra / Vidarbha & Gujarat",
-        lat: 20.7,
-        lon: 77.0,
-        ph: 7.9,
-        imageUrl: "/samples/soil-black-cotton.jpg",
-        description: "Montmorillonite cracking clay. High water retentivity. Prime for Cotton, Soybean, Tur, Jowar.",
-        suggestedCrop: "cotton",
-    },
-    {
-        id: "soil-red-loam",
-        title: "Red Loamy Soil (लाल मिट्टी)",
-        region: "Karnataka / Deccan Uplands & TN",
-        lat: 12.9,
-        lon: 77.6,
-        ph: 5.6,
-        imageUrl: "/samples/soil-red-loam.jpg",
-        description: "Porous ferric loam with good drainage. Excellent for Groundnut, Ragi/Millet, Tomato.",
-        suggestedCrop: "groundnut",
-    },
-    {
-        id: "soil-arid-desert",
-        title: "Desert / Arid Sandy Soil (मरुस्थलीय बलुई)",
-        region: "Rajasthan / Thar Basin",
-        lat: 26.9,
-        lon: 70.9,
-        ph: 8.2,
-        imageUrl: "/samples/soil-arid-desert.jpg",
-        description: "Light coarse sand with high permeability. Ideal for Bajra (Pearl Millet), Mustard, Guar.",
-        suggestedCrop: "millet",
-    },
-    {
-        id: "soil-laterite-kerala",
-        title: "Laterite Soil (लैटेराइट मिट्टी)",
-        region: "Kerala / Western Ghats & Assam",
-        lat: 10.5,
-        lon: 76.2,
-        ph: 5.2,
-        imageUrl: "/samples/soil-laterite-kerala.jpg",
-        description: "Intensely leached acidic soil rich in iron & bauxite. Ideal for Turmeric, Ginger, Tea, Spices.",
-        suggestedCrop: "turmeric",
-    },
-    {
-        id: "soil-tarai-loam",
-        title: "Terai Clay Loam (तराई मिट्टी)",
-        region: "Uttar Pradesh / Bihar Terai",
-        lat: 26.8,
-        lon: 80.9,
-        ph: 6.8,
-        imageUrl: "/samples/soil-tarai-loam.jpg",
-        description: "High organic matter wetland loam along Himalayan foothills. Ideal for Sugarcane, Rice, Potato.",
-        suggestedCrop: "sugarcane",
-    },
-];
-
-// 6 Dedicated Indian Crop Presets (Verified Local JPEGs)
-const INDIAN_CROP_PRESETS = [
-    {
-        id: "wheat-punjab",
-        title: "Wheat (Gehun / गेहूं)",
-        cropKey: "wheat",
-        region: "Punjab / Haryana (Rabi Staple)",
-        lat: 30.9,
-        lon: 75.8,
-        ph: 7.2,
-        imageUrl: "/samples/wheat.jpg",
-    },
-    {
-        id: "paddy-bengal",
-        title: "Paddy / Rice (Dhan / धान)",
-        cropKey: "rice",
-        region: "West Bengal / Coastal (Kharif Staple)",
-        lat: 23.2,
-        lon: 87.8,
-        ph: 6.2,
-        imageUrl: "/samples/paddy.jpg",
-    },
-    {
-        id: "mustard-rajasthan",
-        title: "Mustard (Sarson / सरसों)",
-        cropKey: "mustard",
-        region: "Rajasthan / Bharatpur (Rabi Oilseed)",
-        lat: 27.2,
-        lon: 77.5,
-        ph: 7.4,
-        imageUrl: "/samples/mustard.jpg",
-    },
-    {
-        id: "cotton-maharashtra",
-        title: "Cotton (Kapas / कपास)",
-        cropKey: "cotton",
-        region: "Maharashtra / Vidarbha (Kharif Cash)",
-        lat: 20.7,
-        lon: 77.0,
-        ph: 7.8,
-        imageUrl: "/samples/cotton.jpg",
-    },
-    {
-        id: "sugarcane-up",
-        title: "Sugarcane (Ganna / गन्ना)",
-        cropKey: "sugarcane",
-        region: "Western UP / Meerut (Cash Crop)",
-        lat: 29.0,
-        lon: 77.7,
-        ph: 7.0,
-        imageUrl: "/samples/sugarcane.jpg",
-    },
-    {
-        id: "soybean-mp",
-        title: "Soybean (सोयाबीन)",
-        cropKey: "soybean",
-        region: "Madhya Pradesh / Malwa (Kharif Oilseed)",
-        lat: 22.7,
-        lon: 75.8,
-        ph: 6.8,
-        imageUrl: "/samples/soybean.jpg",
-    },
-];
-
-// Major Indian Agro-Climatic Regions for Quick Geolocation
+// Major Indian Agro-Climatic Regions for Instant GPS Telemetry
 const INDIAN_REGIONS = [
-    { name: "Punjab (North Alluvial)", lat: 30.9, lon: 75.8, soilPh: 7.2 },
-    { name: "Maharashtra (Deccan Black Soil)", lat: 20.7, lon: 77.0, soilPh: 7.9 },
-    { name: "Karnataka (South Red Loam)", lat: 12.9, lon: 77.6, soilPh: 5.6 },
-    { name: "Rajasthan (West Arid Sandy)", lat: 26.9, lon: 70.9, soilPh: 8.2 },
-    { name: "UP / Bihar (Gangetic Terai)", lat: 26.8, lon: 80.9, soilPh: 6.8 },
-    { name: "Kerala (Laterite Coastal)", lat: 10.5, lon: 76.2, soilPh: 5.2 },
+    { name: "Punjab (Indo-Gangetic Alluvial)", lat: 30.9, lon: 75.8, soilType: "Alluvial Silt Loam (जलोढ़ दोमट)" },
+    { name: "Maharashtra (Deccan Black Vertisol)", lat: 20.7, lon: 77.0, soilType: "Black Cotton Soil (काली कपासी)" },
+    { name: "Karnataka (South Red Loam)", lat: 12.9, lon: 77.6, soilType: "Red Sandy Loam (लाल दोमट)" },
+    { name: "Rajasthan (Thar Desert Sandy)", lat: 26.9, lon: 70.9, soilType: "Arid Desert Sand (मरुस्थलीय बलुई)" },
+    { name: "UP / Bihar (Sub-Himalayan Terai)", lat: 26.8, lon: 80.9, soilType: "Terai Wetland Loam (तराई नम दोमट)" },
+    { name: "Kerala (Western Ghats Laterite)", lat: 10.5, lon: 76.2, soilType: "Acidic Laterite (अम्लीय लैटेराइट)" },
+    { name: "West Bengal (Deltaic Alluvium)", lat: 23.2, lon: 87.8, soilType: "Deltaic Alluvial Loam (डेल्टाई दोमट)" },
+];
+
+// Verified Crop Sample Presets for Instant Disease & Health Diagnosis
+const CROP_DISEASE_PRESETS = [
+    {
+        id: "tomato-early-blight",
+        title: "Tomato Early Blight (अगेती झुलसा)",
+        cropKey: "tomato",
+        diseaseHint: "Alternaria solani",
+        imageUrl: "/samples/tomato.jpg",
+        description: "Dark concentric target spots with yellow chlorotic rings on leaves.",
+    },
+    {
+        id: "paddy-blast",
+        title: "Paddy / Rice Blast (झोंका रोग)",
+        cropKey: "rice",
+        diseaseHint: "Magnaporthe oryzae",
+        imageUrl: "/samples/paddy.jpg",
+        description: "Spindle-shaped lesions with grey center and brown necrotic margin.",
+    },
+    {
+        id: "wheat-stripe-rust",
+        title: "Wheat Stripe Rust (पीला रतुआ)",
+        cropKey: "wheat",
+        diseaseHint: "Puccinia striiformis",
+        imageUrl: "/samples/wheat.jpg",
+        description: "Linear yellow-orange powdery pustules along leaf veins.",
+    },
+    {
+        id: "cotton-leaf-curl",
+        title: "Cotton Leaf Curl Virus (पत्ती मरोड़)",
+        cropKey: "cotton",
+        diseaseHint: "Begomovirus (CLCuV)",
+        imageUrl: "/samples/cotton.jpg",
+        description: "Upward leaf cupping, vein thickening and enation outgrowths.",
+    },
+    {
+        id: "mustard-white-rust",
+        title: "Mustard White Rust (सफेद रतुआ)",
+        cropKey: "mustard",
+        diseaseHint: "Albugo candida",
+        imageUrl: "/samples/mustard.jpg",
+        description: "Chalky white blister pustules on underside of leaf and staghead.",
+    },
+    {
+        id: "maize-foliar-blight",
+        title: "Maize Foliar Blight (पत्ती झुलसा)",
+        cropKey: "maize",
+        diseaseHint: "Bipolaris maydis",
+        imageUrl: "/samples/maize.jpg",
+        description: "Elongated necrotic lesions with dark brown margins.",
+    },
 ];
 
 export function CropDiagnosticStudio() {
-    // Mode: Soil Photo vs Crop Photo
-    const [photoType, setPhotoType] = useState<"soil" | "crop">("soil");
+    // Top-Level Studio Mode: GPS Soil vs Crop Disease Studio
+    const [studioTab, setStudioTab] = useState<"gps_soil" | "crop_disease">("gps_soil");
 
     // Coordinates (Default: Central Punjab Agricultural Belt)
     const [lat, setLat] = useState<number>(30.9);
@@ -415,13 +390,14 @@ export function CropDiagnosticStudio() {
     const [selectedCrop, setSelectedCrop] = useState<string>("wheat");
     const [recommendationCategory, setRecommendationCategory] = useState<"all" | "vegetables" | "fruits" | "staples">("all");
 
-    // Photo state
-    const [previewUrl, setPreviewUrl] = useState<string>(INDIAN_SOIL_PRESETS[0].imageUrl);
-    const [photoName, setPhotoName] = useState<string>("soil-alluvial-punjab.jpg");
+    // Crop Photo State
+    const [cropPhotoPreview, setCropPhotoPreview] = useState<string>("/samples/tomato.jpg");
+    const [cropPhotoName, setCropPhotoName] = useState<string>("tomato.jpg");
+    const [hasUserUploadedCropPhoto, setHasUserUploadedCropPhoto] = useState<boolean>(false);
     const [lastImageAnalysis, setLastImageAnalysis] = useState<ImageAnalysisData | null>(null);
     const [isScanning, setIsScanning] = useState<boolean>(false);
 
-    // API Data
+    // Telemetry & Results
     const [weatherData, setWeatherData] = useState<WeatherData>({
         success: true,
         location: { lat: 30.9, lon: 75.8, timezone: "Asia/Kolkata", elevation: 247 },
@@ -451,7 +427,7 @@ export function CropDiagnosticStudio() {
 
     const [soilData, setSoilData] = useState<SoilData>({
         success: true,
-        provider: "ISRIC SoilGrids 2.0 (Global 250m)",
+        provider: "ISRIC SoilGrids 2.0 & National Pedological Survey",
         surface: {
             ph: 7.2,
             soc: 18.5,
@@ -459,25 +435,25 @@ export function CropDiagnosticStudio() {
             clayPct: 22.0,
             sandPct: 45.0,
             siltPct: 33.0,
-            cec: 16.5,
-            textureClass: "Sandy Loam (बलुई दोमट)",
+            cec: 18.5,
+            textureClass: "Silt Loam (गाद दोमट)",
         },
         profile: [
-            { depth: "0-5 cm", ph: 7.2, soc: 18.5, clay: 22.0, cec: 16.5 },
-            { depth: "5-15 cm", ph: 7.3, soc: 15.2, clay: 24.0, cec: 17.0 },
+            { depth: "0-5 cm", ph: 7.2, soc: 18.5, clay: 22.0, cec: 18.5 },
+            { depth: "5-15 cm", ph: 7.3, soc: 15.2, clay: 24.0, cec: 19.0 },
         ],
         interpretation: {
             category: "Optimal / Neutral (संतुलित)",
             status: "optimal",
             badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
-            description: "Fertile alluvial soil. High biological activity and base saturation.",
+            description: "Indo-Gangetic Alluvial Silt Loam. Balanced neutral pH, high cation exchange capacity.",
             amendment: "Optimal conditions. Apply balanced NPK with Neem-coated Urea.",
         },
     });
 
     const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResponse | null>(null);
 
-    // Live API Telemetry
+    // Latency & Debug
     const [weatherLatency, setWeatherLatency] = useState<number>(110);
     const [soilLatency, setSoilLatency] = useState<number>(230);
     const [lastSyncTime, setLastSyncTime] = useState<string>("Live");
@@ -487,12 +463,12 @@ export function CropDiagnosticStudio() {
     const [loadingEnv, setLoadingEnv] = useState<boolean>(false);
     const [loadingAnalysis, setLoadingAnalysis] = useState<boolean>(false);
 
+    // Camera Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraFallbackInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    // Live Device Camera States
     const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
     const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
     const [cameraError, setCameraError] = useState<string | null>(null);
@@ -520,10 +496,9 @@ export function CropDiagnosticStudio() {
         setIsStartingCamera(true);
         stopCameraStream();
 
-        // Check if mediaDevices API is available
         if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             setIsStartingCamera(false);
-            toast.info("Opening device camera application...");
+            toast.info("Opening device camera...");
             cameraFallbackInputRef.current?.click();
             return;
         }
@@ -534,19 +509,11 @@ export function CropDiagnosticStudio() {
             let stream: MediaStream;
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: facing,
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                    },
+                    video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
                     audio: false,
                 });
             } catch {
-                // Fallback for devices that reject specific resolution/facing constraints
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false,
-                });
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             }
 
             streamRef.current = stream;
@@ -554,23 +521,11 @@ export function CropDiagnosticStudio() {
                 videoRef.current.srcObject = stream;
                 try {
                     await videoRef.current.play();
-                } catch {
-                    // Handled if browser policies require user gesture
-                }
+                } catch {}
             }
         } catch (err: unknown) {
             console.error("Camera access error:", err);
-            const error = err as Error;
-            let msg = "Could not access device camera.";
-            if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-                msg = "Camera permission was denied. Please allow camera access in your browser settings.";
-            } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-                msg = "No camera found on this device.";
-            } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
-                msg = "Camera is currently in use by another application.";
-            } else if (error.name === "OverconstrainedError") {
-                msg = "Camera constraints not supported by device.";
-            }
+            const msg = "Could not access camera. Please allow camera permissions.";
             setCameraError(msg);
             toast.error(msg);
         } finally {
@@ -594,68 +549,45 @@ export function CropDiagnosticStudio() {
         if (!videoRef.current) return;
         const video = videoRef.current;
         if (!video.videoWidth || !video.videoHeight) {
-            toast.error("Camera feed is not ready. Please wait a moment.");
+            toast.error("Camera feed is not ready. Please wait.");
             return;
         }
 
-        // Shutter flash effect
         setIsFlashActive(true);
-        setTimeout(() => setIsFlashActive(false), 200);
+        setTimeout(() => setIsFlashActive(false), 180);
 
-        try {
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) {
-                toast.error("Could not process photo snapshot.");
-                return;
-            }
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
 
-            if (cameraFacingMode === "user") {
-                ctx.translate(canvas.width, 0);
-                ctx.scale(-1, 1);
-            }
-
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const pixelAnalysis = extractPixelMetricsFromCanvas(canvas);
-
-            canvas.toBlob(
-                (blob) => {
-                    if (!blob) {
-                        toast.error("Failed to capture snapshot from camera.");
-                        return;
-                    }
-
-                    const objectUrl = URL.createObjectURL(blob);
-                    const fileName = `camera-${photoType}-${Date.now()}.jpg`;
-
-                    setPreviewUrl(objectUrl);
-                    setPhotoName(fileName);
-                    setLastImageAnalysis(pixelAnalysis);
-
-                    closeCamera();
-                    toast.success(`Photo Captured: ${fileName}`);
-
-                    runAnalysis(selectedCrop, soilData, weatherData, photoType, fileName, pixelAnalysis);
-                },
-                "image/jpeg",
-                0.92
-            );
-        } catch (err) {
-            console.error("Capture photo error:", err);
-            toast.error("Failed to capture camera snapshot.");
+        if (cameraFacingMode === "user") {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
         }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const photoDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+        setCropPhotoPreview(photoDataUrl);
+        setCropPhotoName("camera_leaf_capture.jpg");
+        setHasUserUploadedCropPhoto(true);
+        setStudioTab("crop_disease");
+
+        const pixelMetrics = extractPixelMetricsFromCanvas(canvas);
+        setLastImageAnalysis(pixelMetrics);
+
+        closeCamera();
+        toast.success("Crop photo captured! Analyzing foliar health and diseases...");
+        runAnalysis(selectedCrop, soilData, weatherData, "crop", "camera_leaf_capture.jpg", pixelMetrics);
     };
 
-    // Ensure camera stream is stopped if component unmounts
     useEffect(() => {
         return () => {
             stopCameraStream();
         };
     }, []);
 
-    // Reconnect video stream ref if modal opens
     useEffect(() => {
         if (isCameraOpen && streamRef.current && videoRef.current) {
             videoRef.current.srcObject = streamRef.current;
@@ -666,7 +598,6 @@ export function CropDiagnosticStudio() {
     // Fetch Environmental Data (Open-Meteo & SoilGrids)
     const fetchEnvironmentalData = async (latitude: number, longitude: number) => {
         setLoadingEnv(true);
-        const startTime = Date.now();
         let fetchedWeather: WeatherData | null = null;
         let fetchedSoil: SoilData | null = null;
 
@@ -683,7 +614,7 @@ export function CropDiagnosticStudio() {
                 console.warn("Weather API fallback");
             }
 
-            // Direct Open-Meteo fallback
+            // Direct Open-Meteo Fallback
             if (!fetchedWeather || !fetchedWeather.success) {
                 const directUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=soil_temperature_0cm,soil_temperature_6cm,soil_moisture_0_to_1cm,soil_moisture_1_to_3cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia%2FKolkata`;
                 const directRes = await fetch(directUrl);
@@ -697,12 +628,12 @@ export function CropDiagnosticStudio() {
                             humidity: directData.current?.relative_humidity_2m ?? 58,
                             precipitation: directData.current?.precipitation ?? 0,
                             windSpeed: directData.current?.wind_speed_10m ?? 11,
-                            conditionText: "Open-Meteo Live",
+                            conditionText: "Open-Meteo Live Telemetry",
                             soilTemperature0cm: directData.hourly?.soil_temperature_0cm?.[0] ?? 20.0,
                             soilTemperature6cm: directData.hourly?.soil_temperature_6cm?.[0] ?? 19.2,
                             soilMoisture0_1cm: directData.hourly?.soil_moisture_0_to_1cm?.[0] ?? 0.28,
                             soilMoisture1_3cm: directData.hourly?.soil_moisture_1_to_3cm?.[0] ?? 0.30,
-                            moistureStatus: "Optimal Vapsa",
+                            moistureStatus: "Optimal Vapsa (वतर अनुकूल)",
                         },
                         agronomy: { accumulatedGdd7Days: 14.0, dailyGddRate: 2.0, totalPrecip7Days: 0.0, totalEt07Days: 15.0 },
                         forecast: [],
@@ -723,63 +654,26 @@ export function CropDiagnosticStudio() {
                 console.warn("Soil API fallback");
             }
 
-            // Direct SoilGrids fallback
-            if (!fetchedSoil || !fetchedSoil.success) {
-                const directSoilUrl = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${longitude}&lat=${latitude}&property=phh2o&property=soc&property=clay&property=sand&property=silt&property=cec&depth=0-5cm`;
-                const directSoilRes = await fetch(directSoilUrl);
-                if (directSoilRes.ok) {
-                    const d = await directSoilRes.json();
-                    const phVal = d.properties?.layers?.find((l: any) => l.name === "phh2o")?.depths?.[0]?.values?.mean;
-                    const ph = typeof phVal === "number" ? phVal / 10 : 7.2;
-                    fetchedSoil = {
-                        success: true,
-                        provider: "ISRIC SoilGrids 2.0 (Global 250m)",
-                        surface: {
-                            ph,
-                            soc: 18.0,
-                            organicMatterPct: 3.1,
-                            clayPct: 22.0,
-                            sandPct: 45.0,
-                            siltPct: 33.0,
-                            cec: 16.5,
-                            textureClass: "Sandy Loam",
-                        },
-                        profile: [{ depth: "0-5 cm", ph, soc: 18.0, clay: 22.0, cec: 16.5 }],
-                        interpretation: {
-                            category: ph < 6.0 ? "Acidic" : ph > 7.5 ? "Alkaline" : "Optimal",
-                            status: "optimal",
-                            badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
-                            description: "SoilGrids ground truth profile synced.",
-                            amendment: "Maintain current management.",
-                        },
-                    };
-                    setSoilLatency(Date.now() - t0Soil);
-                }
-            }
-
             if (fetchedWeather) setWeatherData(fetchedWeather);
             if (fetchedSoil) setSoilData(fetchedSoil);
 
-            const now = new Date();
-            setLastSyncTime(now.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }));
-            toast.success(`Telemetry Live: Open-Meteo & SoilGrids connected (${Date.now() - startTime}ms)`);
-            return { weather: fetchedWeather || weatherData, soil: fetchedSoil || soilData };
+            setLastSyncTime(new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }));
+            return { weather: fetchedWeather, soil: fetchedSoil };
         } catch (err) {
-            console.error("Error fetching environmental data:", err);
-            toast.error("Could not fetch environmental data.");
-            return { weather: weatherData, soil: soilData };
+            console.error("Fetch environmental data error:", err);
+            return null;
         } finally {
             setLoadingEnv(false);
         }
     };
 
-    // Run Full Indian Agronomic Analysis
+    // Primary Orchestration Engine
     const runAnalysis = async (
-        cropKey: string,
-        currentSoil: SoilData | null,
-        currentWeather: WeatherData | null,
-        type: "soil" | "crop" = photoType,
-        imgName: string = photoName,
+        cropKey: string = selectedCrop,
+        currentSoil: SoilData | null = soilData,
+        currentWeather: WeatherData | null = weatherData,
+        type: "soil" | "crop" = "crop",
+        imgName: string = cropPhotoName,
         imageAnalysis?: ImageAnalysisData | null
     ) => {
         setLoadingAnalysis(true);
@@ -813,7 +707,7 @@ export function CropDiagnosticStudio() {
             if (result.success) {
                 setDiagnosticResult(result);
 
-                // CRITICAL: Update local soilData state so the UI's pH gauges, texture, and organic matter dynamically reflect the photo!
+                // Update local soil data from GPS telemetry
                 if (result.soilProfileSummary) {
                     setSoilData((prev) => ({
                         ...prev,
@@ -833,14 +727,20 @@ export function CropDiagnosticStudio() {
                             badgeColor: result.soilProfileSummary.ph >= 6.0 && result.soilProfileSummary.ph <= 7.5
                                 ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                                 : "text-amber-400 bg-amber-500/10 border-amber-500/30",
-                            description: result.soilVisualDiagnosis?.phVerdictNote || `Photo: ${result.soilVisualDiagnosis?.indianSoilClassification} (pH ${result.soilProfileSummary.ph})`,
+                            description: result.soilVisualDiagnosis?.phVerdictNote || `GPS Soil: ${result.soilVisualDiagnosis?.indianSoilClassification}`,
                         }
                     }));
                 }
 
-                toast.success(
-                    `Photo Diagnosis: ${result.soilVisualDiagnosis?.indianSoilClassification || "Soil"} (pH ${result.soilProfileSummary?.ph}) · ${result.targetCrop.commonName} is ${result.viabilityVerdict.verdict}`
-                );
+                if (result.cropHealthAnalysis) {
+                    toast.success(
+                        `Crop Health: ${result.cropHealthAnalysis.primaryDisease.name} (${result.cropHealthAnalysis.healthStatus}) · ${result.cropHealthAnalysis.overallHealthScore}% Vitality`
+                    );
+                } else {
+                    toast.success(
+                        `GPS Soil Synced: ${result.soilVisualDiagnosis?.indianSoilClassification} (pH ${result.soilProfileSummary?.ph}) · ${result.targetCrop.commonName} is ${result.viabilityVerdict.verdict}`
+                    );
+                }
             } else {
                 toast.error(result.error || "Analysis failed.");
             }
@@ -849,101 +749,82 @@ export function CropDiagnosticStudio() {
             toast.error("Failed to execute AgroCloud agronomic engine.");
         } finally {
             setLoadingAnalysis(false);
-            setTimeout(() => setIsScanning(false), 600);
+            setTimeout(() => setIsScanning(false), 500);
         }
     };
 
-    // Initial load on mount
+    // Initial Load
     useEffect(() => {
         const init = async () => {
             const env = await fetchEnvironmentalData(lat, lon);
             if (env) {
-                await runAnalysis("wheat", env.soil, env.weather, "soil", "soil-alluvial-punjab.jpg");
+                await runAnalysis("wheat", env.soil, env.weather, "crop", "wheat.jpg");
             }
         };
         init();
     }, []);
 
-    // Handle File Upload with In-Browser Pixel Diagnostics
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Handle Crop Photo File Upload
+    const handleCropPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setPhotoName(file.name);
+        setCropPhotoName(file.name);
         const objectUrl = URL.createObjectURL(file);
-        setPreviewUrl(objectUrl);
-        toast.info(`Extracting photo pixels for ${file.name}...`);
+        setCropPhotoPreview(objectUrl);
+        setHasUserUploadedCropPhoto(true);
+        setStudioTab("crop_disease");
+        toast.info(`Analyzing crop photo: ${file.name}...`);
 
         const img = new Image();
         img.onload = () => {
             const pixelAnalysis = extractPixelMetricsFromImage(img);
             setLastImageAnalysis(pixelAnalysis);
-            runAnalysis(selectedCrop, soilData, weatherData, photoType, file.name, pixelAnalysis);
+            runAnalysis(selectedCrop, soilData, weatherData, "crop", file.name, pixelAnalysis);
         };
         img.onerror = () => {
-            runAnalysis(selectedCrop, soilData, weatherData, photoType, file.name);
+            runAnalysis(selectedCrop, soilData, weatherData, "crop", file.name);
         };
         img.src = objectUrl;
     };
 
-    // Select Indian Soil Preset
-    const handleSelectSoilPreset = async (preset: typeof INDIAN_SOIL_PRESETS[0]) => {
-        setPhotoType("soil");
-        setLat(preset.lat);
-        setLon(preset.lon);
-        setPreviewUrl(preset.imageUrl);
-        setPhotoName(`${preset.id}.jpg`);
-        setSelectedCrop(preset.suggestedCrop);
+    // 1-Click Select an Indian Region (GPS Telemetry Only - No Soil Photo)
+    const handleSelectRegion = async (reg: typeof INDIAN_REGIONS[0]) => {
+        setLat(reg.lat);
+        setLon(reg.lon);
+        toast.info(`Switched GPS Location to: ${reg.name}`);
+        const env = await fetchEnvironmentalData(reg.lat, reg.lon);
+        if (env) {
+            await runAnalysis(selectedCrop, env.soil, env.weather, "soil", "", null);
+        }
+    };
+
+    // 1-Click Select a Crop Disease Preset
+    const handleSelectDiseasePreset = async (preset: typeof CROP_DISEASE_PRESETS[0]) => {
+        setCropPhotoPreview(preset.imageUrl);
+        setCropPhotoName(`${preset.id}.jpg`);
+        setSelectedCrop(preset.cropKey);
+        setHasUserUploadedCropPhoto(true);
+        setStudioTab("crop_disease");
+        toast.info(`Inspecting disease preset: ${preset.title}`);
 
         const img = new Image();
         img.onload = async () => {
             const pixelAnalysis = extractPixelMetricsFromImage(img);
             setLastImageAnalysis(pixelAnalysis);
-            const env = await fetchEnvironmentalData(preset.lat, preset.lon);
-            if (env) {
-                await runAnalysis(preset.suggestedCrop, env.soil, env.weather, "soil", `${preset.id}.jpg`, pixelAnalysis);
-            }
+            await runAnalysis(preset.cropKey, soilData, weatherData, "crop", `${preset.id}.jpg`, pixelAnalysis);
         };
         img.onerror = async () => {
-            const env = await fetchEnvironmentalData(preset.lat, preset.lon);
-            if (env) {
-                await runAnalysis(preset.suggestedCrop, env.soil, env.weather, "soil", `${preset.id}.jpg`);
-            }
+            await runAnalysis(preset.cropKey, soilData, weatherData, "crop", `${preset.id}.jpg`);
         };
         img.src = preset.imageUrl;
-    };
-
-    // Select Indian Crop Preset
-    const handleSelectCropPreset = async (preset: typeof INDIAN_CROP_PRESETS[0]) => {
-        setPhotoType("crop");
-        setSelectedCrop(preset.cropKey);
-        setLat(preset.lat);
-        setLon(preset.lon);
-        setPreviewUrl(preset.imageUrl);
-        setPhotoName(`${preset.id}.jpg`);
-
-        const env = await fetchEnvironmentalData(preset.lat, preset.lon);
-        if (env) {
-            await runAnalysis(preset.cropKey, env.soil, env.weather, "crop", `${preset.id}.jpg`);
-        }
-    };
-
-    // 1-Click Select an Indian Region
-    const handleSelectRegion = async (reg: typeof INDIAN_REGIONS[0]) => {
-        setLat(reg.lat);
-        setLon(reg.lon);
-        toast.info(`Switched Region to: ${reg.name}`);
-        const env = await fetchEnvironmentalData(reg.lat, reg.lon);
-        if (env) {
-            await runAnalysis(selectedCrop, env.soil, env.weather, photoType, photoName, lastImageAnalysis);
-        }
     };
 
     // 1-Click Select a Recommended Crop
     const handlePickRecommendedCrop = async (cropKey: string) => {
         setSelectedCrop(cropKey);
-        toast.info(`Evaluating Indian Soil Viability for: ${cropKey.toUpperCase()}`);
-        await runAnalysis(cropKey, soilData, weatherData, photoType, photoName, lastImageAnalysis);
+        toast.info(`Evaluating GPS Soil Viability for: ${cropKey.toUpperCase()}`);
+        await runAnalysis(cropKey, soilData, weatherData, "soil", cropPhotoName, lastImageAnalysis);
         const dossierEl = document.getElementById("target-crop-viability-dossier");
         if (dossierEl) {
             dossierEl.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -964,10 +845,10 @@ export function CropDiagnosticStudio() {
                 const newLon = Math.round(pos.coords.longitude * 10000) / 10000;
                 setLat(newLat);
                 setLon(newLon);
-                toast.success(`Location set: ${newLat}° N, ${newLon}° E`);
+                toast.success(`GPS Location Detected: ${newLat}° N, ${newLon}° E`);
                 const env = await fetchEnvironmentalData(newLat, newLon);
                 if (env) {
-                    await runAnalysis(selectedCrop, env.soil, env.weather, photoType, photoName);
+                    await runAnalysis(selectedCrop, env.soil, env.weather, "soil", "");
                 }
             },
             (err) => {
@@ -989,7 +870,6 @@ export function CropDiagnosticStudio() {
                     }}
                 >
                     <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-                        {/* Modal Header */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-900/60">
                             <div className="flex items-center gap-2.5">
                                 <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
@@ -997,13 +877,13 @@ export function CropDiagnosticStudio() {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                                        Device Camera Viewfinder
+                                        Crop Leaf Camera Viewfinder
                                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono uppercase">
-                                            {photoType === "soil" ? "Soil Mode" : "Crop Mode"}
+                                            Disease & Health Intake
                                         </span>
                                     </h3>
                                     <p className="text-xs text-zinc-400">
-                                        Align your {photoType === "soil" ? "soil sample" : "crop foliage"} within the frame and capture
+                                        Frame the crop leaf or diseased section clearly and press capture
                                     </p>
                                 </div>
                             </div>
@@ -1013,15 +893,12 @@ export function CropDiagnosticStudio() {
                                 id="close-camera-btn"
                                 onClick={closeCamera}
                                 className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
-                                aria-label="Close camera"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        {/* Viewfinder Viewport */}
                         <div className="relative w-full aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
-                            {/* Live video */}
                             <video
                                 ref={videoRef}
                                 autoPlay
@@ -1030,117 +907,47 @@ export function CropDiagnosticStudio() {
                                 className={`w-full h-full object-cover ${cameraFacingMode === "user" ? "scale-x-[-1]" : ""}`}
                             />
 
-                            {/* Shutter flash effect */}
                             <div
                                 className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${
                                     isFlashActive ? "opacity-90" : "opacity-0"
                                 }`}
                             />
 
-                            {/* Viewfinder Reticle / Corner Brackets */}
                             <div className="absolute inset-6 pointer-events-none border border-emerald-500/20 rounded-xl">
-                                {/* Corners */}
                                 <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg" />
                                 <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg" />
                                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg" />
                                 <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-emerald-400 rounded-br-lg" />
-
-                                {/* Center Target Reticle */}
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 pointer-events-none">
-                                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-emerald-400/30" />
-                                    <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-emerald-400/30" />
-                                    <div className="absolute inset-3 border border-dashed border-emerald-400/40 rounded-full" />
-                                </div>
                             </div>
-
-                            {/* Live status badge */}
-                            <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md border border-emerald-500/30 text-[11px] font-mono text-emerald-400 pointer-events-none">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                LIVE FEED · {cameraFacingMode === "environment" ? "REAR CAMERA" : "FRONT CAMERA"}
-                            </div>
-
-                            {/* Loading indicator when camera is initializing */}
-                            {isStartingCamera && (
-                                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-3">
-                                    <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
-                                    <span className="text-sm text-zinc-300 font-medium">Connecting to device camera...</span>
-                                </div>
-                            )}
-
-                            {/* Camera error message overlay */}
-                            {cameraError && (
-                                <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-6 text-center gap-4">
-                                    <div className="p-3 rounded-full bg-red-500/10 border border-red-500/30 text-red-400">
-                                        <AlertCircle className="w-8 h-8" />
-                                    </div>
-                                    <div className="space-y-1 max-w-md">
-                                        <h4 className="text-base font-bold text-zinc-100">Camera Access Issue</h4>
-                                        <p className="text-xs text-zinc-400">{cameraError}</p>
-                                    </div>
-                                    <div className="flex flex-wrap items-center justify-center gap-3">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-xs gap-2"
-                                            onClick={() => startCamera()}
-                                        >
-                                            <RefreshCw className="w-3.5 h-3.5" />
-                                            Retry Camera
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            className="text-xs gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
-                                            onClick={() => {
-                                                closeCamera();
-                                                cameraFallbackInputRef.current?.click();
-                                            }}
-                                        >
-                                            <Upload className="w-3.5 h-3.5" />
-                                            Use Device File / Native Capture
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Modal Footer Controls */}
-                        <div className="flex items-center justify-between px-6 py-4 bg-zinc-900 border-t border-zinc-800">
-                            {/* Switch Camera Button */}
+                        <div className="flex items-center justify-between px-6 py-4 bg-zinc-900/80 border-t border-zinc-800">
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                id="switch-camera-btn"
                                 onClick={handleSwitchCamera}
-                                disabled={isStartingCamera || !!cameraError}
-                                className="text-xs gap-2 border-zinc-700 bg-zinc-800/60 hover:bg-zinc-800 text-zinc-300"
+                                className="gap-2 text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                             >
-                                <SwitchCamera className="w-4 h-4 text-emerald-400" />
-                                <span className="hidden sm:inline">Flip Camera</span>
+                                <SwitchCamera className="w-4 h-4" />
+                                Flip Camera
                             </Button>
 
-                            {/* Capture Photo Button */}
                             <button
                                 type="button"
                                 id="capture-shutter-btn"
                                 onClick={capturePhotoFromCamera}
-                                disabled={isStartingCamera || !!cameraError}
-                                className="relative group p-1.5 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
-                                aria-label="Take Photo"
+                                className="w-14 h-14 rounded-full border-4 border-white bg-emerald-500 hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-950/40 active:scale-95 flex items-center justify-center text-white"
                             >
-                                <div className="w-14 h-14 rounded-full border-2 border-white flex items-center justify-center bg-white/20 group-hover:bg-white/30">
-                                    <Camera className="w-6 h-6 text-white" />
-                                </div>
+                                <Camera className="w-6 h-6" />
                             </button>
 
-                            {/* Cancel Button */}
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                id="cancel-camera-btn"
                                 onClick={closeCamera}
-                                className="text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                                className="text-xs text-zinc-400 hover:text-zinc-200"
                             >
                                 Cancel
                             </Button>
@@ -1148,16 +955,37 @@ export function CropDiagnosticStudio() {
                     </div>
                 </div>
             )}
-            {/* Control Header & Live Telemetry Bar */}
+
+            {/* Hidden Input Fallbacks */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCropPhotoUpload}
+            />
+            <input
+                ref={cameraFallbackInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleCropPhotoUpload}
+            />
+
+            {/* Main Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-5">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                        AgroCloud India · भारतीय कृषि मृदा एवं फसल प्रणाली
+                        AgroCloud India · राष्ट्रीय जीपीएस मृदा एवं फसल रोग निदान प्रणाली
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
-                        <span>Indian Soil Viability, Rainfall & Precision Crop Recommendation</span>
+                        <span>Precision Agronomy & Crop Intelligence Studio</span>
                     </h1>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Dual Engine: <strong>Zero-Photo GPS Soil Analysis</strong> across all Indian states & <strong>AI Foliar Disease Diagnostics</strong> for user-uploaded crop photos.
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -1181,12 +1009,12 @@ export function CropDiagnosticStudio() {
                         onClick={() => window.print()}
                     >
                         <Download className="w-3.5 h-3.5" />
-                        Export Action Plan
+                        Export Report
                     </Button>
                 </div>
             </div>
 
-            {/* Live API Telemetry Status Bar */}
+            {/* Telemetry Bar */}
             <div className="p-3.5 rounded-xl bg-surface-1 border border-border/60 flex flex-wrap items-center justify-between gap-4 text-xs">
                 <div className="flex flex-wrap items-center gap-5">
                     <div className="flex items-center gap-2">
@@ -1236,24 +1064,67 @@ export function CropDiagnosticStudio() {
                             </pre>
                         </div>
                         <div className="space-y-1">
-                            <span className="text-blue-400 font-semibold block text-[11px]">ISRIC SoilGrids Indian Profile:</span>
+                            <span className="text-blue-400 font-semibold block text-[11px]">ISRIC SoilGrids & National Survey:</span>
                             <pre className="p-3 rounded-lg bg-zinc-950 overflow-x-auto text-[11px] text-zinc-300 max-h-48 scrollbar-thin">
-                                {JSON.stringify(soilData?.surface, null, 2)}
+                                {JSON.stringify(diagnosticResult?.soilVisualDiagnosis || soilData?.surface, null, 2)}
                             </pre>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Quick Indian Agricultural Belt Selector */}
-            <div className="p-3.5 rounded-xl bg-surface-2 border border-border/50 space-y-2">
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* DUAL WORKSPACE TABS: GPS SOIL INTELLIGENCE vs CROP HEALTH STUDIO */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 rounded-2xl bg-surface-2 border border-border/60">
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        id="tab-gps-soil-btn"
+                        onClick={() => setStudioTab("gps_soil")}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            studioTab === "gps_soil"
+                                ? "bg-emerald-600 text-white shadow-md shadow-emerald-950/30 ring-1 ring-emerald-400"
+                                : "text-muted-foreground hover:text-foreground hover:bg-surface-1"
+                        }`}
+                    >
+                        <Compass className="w-4 h-4" />
+                        <span>📍 GPS Soil & Field Intelligence (No Photo Needed)</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        id="tab-crop-disease-btn"
+                        onClick={() => setStudioTab("crop_disease")}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            studioTab === "crop_disease"
+                                ? "bg-emerald-600 text-white shadow-md shadow-emerald-950/30 ring-1 ring-emerald-400"
+                                : "text-muted-foreground hover:text-foreground hover:bg-surface-1"
+                        }`}
+                    >
+                        <Leaf className="w-4 h-4" />
+                        <span>🌿 Crop Disease & Health Diagnostic (Upload Crop Photo)</span>
+                    </button>
+                </div>
+
+                <div className="text-xs text-muted-foreground px-3 py-1">
+                    {studioTab === "gps_soil" ? (
+                        <span className="text-emerald-400 font-medium">Predicts pH, texture & nutrients purely from coordinates</span>
+                    ) : (
+                        <span className="text-amber-400 font-medium">Detects leaf pathogens, blights, rusts & prescribes remedies</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Quick Indian Agricultural Belt Presets */}
+            <div className="p-3.5 rounded-xl bg-surface-1 border border-border/50 space-y-2">
                 <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground flex items-center gap-1.5">
                         <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                        Quick Select Indian Agro-Climatic Belt (1-Click Sync):
+                        <span>Quick-Select Indian Agro-Climatic Belt (1-Click Sync):</span>
                     </span>
                     <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                        Instantly updates GPS coordinates, local soil type, pH and weather
+                        Instantly updates GPS coordinates, national soil survey data, pH & live weather
                     </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1262,288 +1133,39 @@ export function CropDiagnosticStudio() {
                             key={reg.name}
                             type="button"
                             onClick={() => handleSelectRegion(reg)}
-                            className={`px-3 py-1 text-xs rounded-lg border transition-all ${
+                            className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
                                 lat === reg.lat && lon === reg.lon
                                     ? "bg-emerald-600 text-white border-emerald-500 font-semibold shadow-sm"
-                                    : "bg-surface-1 border-border/60 text-muted-foreground hover:text-foreground hover:border-emerald-500/40"
+                                    : "bg-surface-2 border-border/60 text-muted-foreground hover:text-foreground hover:border-emerald-500/40"
                             }`}
                         >
-                            {reg.name}
+                            <span>{reg.name}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Mode Switcher: Soil Photo vs Crop Photo */}
-            <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground uppercase tracking-wider">Select Diagnostic Mode:</span>
-                        <div className="inline-flex rounded-lg bg-surface-2 p-1 border border-border/60">
-                            <button
-                                type="button"
-                                id="mode-soil-btn"
-                                onClick={() => setPhotoType("soil")}
-                                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                                    photoType === "soil"
-                                        ? "bg-emerald-600 text-white shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                🟤 Indian Soil Photo (मृदा फोटो)
-                            </button>
-                            <button
-                                type="button"
-                                id="mode-crop-btn"
-                                onClick={() => setPhotoType("crop")}
-                                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                                    photoType === "crop"
-                                        ? "bg-emerald-600 text-white shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground"
-                                }`}
-                            >
-                                🌿 Indian Crop Foliage (फसल फोटो)
-                            </button>
-                        </div>
-                    </div>
-
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                        {photoType === "soil" ? "Upload or pick an Indian soil type to evaluate pH and best crops" : "Inspect Indian crop canopy & viability"}
-                    </span>
-                </div>
-
-                {/* Preloaded Presets Strip: Guaranteed Verified Images with Safe Fallback */}
-                {photoType === "soil" ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        {INDIAN_SOIL_PRESETS.map((preset) => {
-                            const isCurrent = previewUrl === preset.imageUrl;
-                            return (
-                                <button
-                                    key={preset.id}
-                                    id={`soil-preset-${preset.id}`}
-                                    type="button"
-                                    onClick={() => handleSelectSoilPreset(preset)}
-                                    className={`group text-left p-2.5 rounded-xl border transition-all duration-200 relative overflow-hidden flex flex-col justify-between ${
-                                        isCurrent
-                                            ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-950/20 ring-1 ring-emerald-500"
-                                            : "border-border/60 bg-surface-1 hover:border-emerald-500/50 hover:bg-surface-2"
-                                    }`}
-                                >
-                                    <div className="aspect-[4/3] w-full rounded-lg overflow-hidden bg-muted mb-2 relative">
-                                        <img
-                                            src={preset.imageUrl}
-                                            alt={preset.title}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                            onError={(e) => {
-                                                const target = e.currentTarget;
-                                                if (!target.src.includes("wheat.jpg")) {
-                                                    target.src = "/samples/wheat.jpg";
-                                                }
-                                            }}
-                                        />
-                                        {isCurrent && (
-                                            <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow">
-                                                <CheckCircle2 className="w-3 h-3" />
-                                            </div>
-                                        )}
-                                        <div className="absolute bottom-1 right-1 bg-black/85 px-1.5 py-0.5 rounded text-[10px] font-mono text-amber-300">
-                                            pH {preset.ph}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-xs font-semibold text-foreground truncate">{preset.title}</h4>
-                                        <p className="text-[10px] text-muted-foreground truncate">{preset.region}</p>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        {INDIAN_CROP_PRESETS.map((preset) => {
-                            const isCurrent = previewUrl === preset.imageUrl;
-                            return (
-                                <button
-                                    key={preset.id}
-                                    id={`crop-preset-${preset.id}`}
-                                    type="button"
-                                    onClick={() => handleSelectCropPreset(preset)}
-                                    className={`group text-left p-2.5 rounded-xl border transition-all duration-200 relative overflow-hidden flex flex-col justify-between ${
-                                        isCurrent
-                                            ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-950/20 ring-1 ring-emerald-500"
-                                            : "border-border/60 bg-surface-1 hover:border-emerald-500/50 hover:bg-surface-2"
-                                    }`}
-                                >
-                                    <div className="aspect-[4/3] w-full rounded-lg overflow-hidden bg-muted mb-2 relative">
-                                        <img
-                                            src={preset.imageUrl}
-                                            alt={preset.title}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                            onError={(e) => {
-                                                const target = e.currentTarget;
-                                                if (!target.src.includes("wheat.jpg")) {
-                                                    target.src = "/samples/wheat.jpg";
-                                                }
-                                            }}
-                                        />
-                                        {isCurrent && (
-                                            <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow">
-                                                <CheckCircle2 className="w-3 h-3" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <h4 className="text-xs font-semibold text-foreground truncate">{preset.title}</h4>
-                                        <p className="text-[10px] text-muted-foreground truncate">{preset.region}</p>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* Primary Diagnostic Workspace: 2-Column Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Left Column: Photo Upload Viewport & Image Inspector */}
-                <div className="lg:col-span-5 space-y-4">
-                    <div className="p-5 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                                    Step 1 · Soil Photo Intake (मृदा फोटो)
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* WORKSPACE VIEW 1: GPS SOIL & FIELD INTELLIGENCE (ZERO PHOTO NEEDED) */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            {studioTab === "gps_soil" && (
+                <div className="space-y-6">
+                    {/* Coordinates & Crop Selector Card */}
+                    <div className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-4">
+                            <div>
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                    <MapPin className="w-3.5 h-3.5" />
+                                    <span>Nationwide Geolocation & Coordinate Input</span>
                                 </div>
-                                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                                    {photoType === "soil" ? (
-                                        <>
-                                            <FlaskConical className="w-4 h-4 text-amber-400" />
-                                            Soil Sample Intake & Vision Analysis
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Leaf className="w-4 h-4 text-emerald-400" />
-                                            Indian Crop Canopy Intake
-                                        </>
-                                    )}
+                                <h3 className="text-lg font-bold text-foreground">
+                                    Field Coordinates & Ground Truth Sync
                                 </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    AgroCloud cross-references these coordinates against ISRIC SoilGrids 2.0 and India&apos;s National Pedological Survey to identify soil type, pH, and nutrients without requiring any photo.
+                                </p>
                             </div>
-                            <span className="text-xs text-muted-foreground truncate max-w-[140px] font-mono">{photoName}</span>
-                        </div>
 
-                        {/* Image Preview with Scanning Overlay & Guaranteed Fallback */}
-                        <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-black/40 border border-border/80 group">
-                            <img
-                                src={previewUrl}
-                                alt="Sample Preview"
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    const target = e.currentTarget;
-                                    if (!target.src.includes("wheat.jpg")) {
-                                        target.src = "/samples/wheat.jpg";
-                                    }
-                                }}
-                            />
-
-                            {isScanning && (
-                                <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[1px] flex flex-col items-center justify-center pointer-events-none">
-                                    <div className="w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent absolute top-0 animate-bounce" />
-                                    <div className="px-3 py-1.5 rounded-full bg-black/85 border border-emerald-500/60 text-emerald-300 text-xs font-mono font-medium tracking-wide shadow-xl flex items-center gap-2">
-                                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                                        Analyzing Indian SoilGrids & Open-Meteo Weather...
-                                    </div>
-                                </div>
-                            )}
-
-                            {!isScanning && (
-                                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                                    <div className="px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md text-[11px] font-mono text-emerald-300 border border-emerald-500/30">
-                                        {photoType === "soil" ? `Texture: ${soilData.surface.textureClass}` : `Crop: ${selectedCrop.toUpperCase()}`}
-                                    </div>
-                                    <div className="px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md text-[11px] font-mono text-amber-300 border border-amber-500/30">
-                                        pH {soilData.surface.ph}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Upload & Camera Buttons */}
-                        <div className="grid grid-cols-2 gap-3 pt-1">
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                id="photo-file-input"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleFileChange}
-                            />
-                            {/* Native camera capture fallback for mobile browsers */}
-                            <input
-                                ref={cameraFallbackInputRef}
-                                type="file"
-                                id="camera-fallback-input"
-                                accept="image/*"
-                                capture="environment"
-                                className="hidden"
-                                onChange={handleFileChange}
-                            />
-                            <Button
-                                id="upload-photo-btn"
-                                variant="outline"
-                                className="w-full gap-2 text-xs"
-                                onClick={() => fileInputRef.current?.click()}
-                            >
-                                <Upload className="w-3.5 h-3.5 text-muted-foreground" />
-                                {photoType === "soil" ? "Upload Soil Photo (मृदा फोटो)" : "Upload Crop Photo (फसल फोटो)"}
-                            </Button>
-
-                            <Button
-                                id="take-photo-btn"
-                                variant="outline"
-                                className="w-full gap-2 text-xs text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                                onClick={() => startCamera()}
-                            >
-                                <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                                Open Camera (कैमरा खोलें)
-                            </Button>
-                        </div>
-
-                        {/* Photo Detected Soil Ground Truth Banner */}
-                        {diagnosticResult?.soilVisualDiagnosis && (
-                            <div className="p-3 rounded-xl bg-surface-2 border border-emerald-500/30 text-xs space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-foreground flex items-center gap-1.5">
-                                        <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
-                                        <span>Detected from Soil Photo:</span>
-                                    </span>
-                                    <span className="font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/25">
-                                        pH {soilData.surface.ph}
-                                    </span>
-                                </div>
-                                <div className="font-bold text-emerald-400 text-sm">
-                                    {diagnosticResult.soilVisualDiagnosis.indianSoilClassification}
-                                </div>
-                                <div className="text-[11px] text-muted-foreground flex items-center justify-between">
-                                    <span>Texture: <strong className="text-foreground">{soilData.surface.textureClass}</strong></span>
-                                    <span>Clay: <strong className="text-foreground">{diagnosticResult.soilProfileSummary.clayPct}%</strong></span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Column: Geolocation, Weather Telemetry & Indian Crop Selector */}
-                <div className="lg:col-span-7 space-y-4">
-                    <div className="p-5 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="space-y-1">
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                                    Step 2 · Field Geolocation & GPS
-                                </div>
-                                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                                    <Compass className="w-4 h-4 text-emerald-400" />
-                                    Coordinates & Ground Truth Sync
-                                </h3>
-                            </div>
                             <Button
                                 id="gps-auto-detect-btn"
                                 variant="outline"
@@ -1557,7 +1179,7 @@ export function CropDiagnosticStudio() {
                         </div>
 
                         {/* Latitude & Longitude Inputs */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-1">
                                 <label className="text-xs font-medium text-muted-foreground">Latitude (° N)</label>
                                 <input
@@ -1580,10 +1202,59 @@ export function CropDiagnosticStudio() {
                                     className="w-full h-10 px-3 rounded-lg bg-surface-2 border border-border/80 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 />
                             </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Target Crop for Viability Check</label>
+                                <select
+                                    id="select-crop-target"
+                                    value={selectedCrop}
+                                    onChange={(e) => {
+                                        const newCrop = e.target.value;
+                                        setSelectedCrop(newCrop);
+                                        runAnalysis(newCrop, soilData, weatherData, "soil", "");
+                                    }}
+                                    className="w-full h-10 px-3 rounded-lg bg-surface-2 border border-border/80 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                                >
+                                    <optgroup label="🥬 Vegetables (सब्जियां)">
+                                        <option value="tomato">Tomato (Tamatar / टमाटर)</option>
+                                        <option value="potato">Potato (Aloo / आलू)</option>
+                                        <option value="onion">Onion (Pyaz / प्याज)</option>
+                                        <option value="chili">Chili Pepper (Mirch / मिर्च)</option>
+                                        <option value="brinjal">Brinjal / Eggplant (Baingan / बैंगन)</option>
+                                        <option value="cauliflower">Cauliflower (Phoolgobhi / फूलगोभी)</option>
+                                        <option value="cabbage">Cabbage (Pattagobhi / पत्तागोभी)</option>
+                                        <option value="peas">Green Peas (Matar / हरी मटर)</option>
+                                        <option value="okra">Ladyfinger / Okra (Bhindi / भिंडी)</option>
+                                        <option value="carrot">Carrot (Gajar / गाजर)</option>
+                                    </optgroup>
+                                    <optgroup label="🍎 Fruits & Horticulture (फल एवं बागवानी)">
+                                        <option value="mango">Mango (Aam / आम)</option>
+                                        <option value="guava">Guava (Amrood / अमरूद)</option>
+                                        <option value="pomegranate">Pomegranate (Anar / अनार)</option>
+                                        <option value="papaya">Papaya (Papita / पपीता)</option>
+                                        <option value="banana">Banana (Kela / केला)</option>
+                                        <option value="lemon">Lemon / Acid Lime (Nimbu / नींबू)</option>
+                                        <option value="watermelon">Watermelon (Tarbooj / तरबूज)</option>
+                                        <option value="grapes">Grapes (Angoor / अंगूर)</option>
+                                        <option value="ber">Indian Jujube (Ber / बेर)</option>
+                                        <option value="cashew">Cashew Nut (Kaju / काजू)</option>
+                                    </optgroup>
+                                    <optgroup label="🌾 Cereals & Cash Crops (अनाज व नकदी)">
+                                        <option value="wheat">Wheat (Gehun / गेहूं)</option>
+                                        <option value="rice">Paddy / Rice (Dhan / धान)</option>
+                                        <option value="maize">Maize / Corn (Makka / मक्का)</option>
+                                        <option value="bajra">Pearl Millet (Bajra / बाजरा)</option>
+                                        <option value="chickpea">Chickpea / Bengal Gram (Chana / चना)</option>
+                                        <option value="mustard">Mustard (Sarson / सरसों)</option>
+                                        <option value="soybean">Soybean (सोयाबीन)</option>
+                                        <option value="cotton">Cotton (Kapas / कपास)</option>
+                                        <option value="sugarcane">Sugarcane (Ganna / गन्ना)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
                         </div>
 
-                        {/* Apply / Sync Coordinates Button */}
-                        <div className="flex items-center justify-between pt-0.5">
+                        {/* Sync Button */}
+                        <div className="flex items-center justify-between pt-1">
                             <Button
                                 id="sync-gps-coords-btn"
                                 type="button"
@@ -1591,186 +1262,380 @@ export function CropDiagnosticStudio() {
                                 size="sm"
                                 disabled={loadingEnv || loadingAnalysis}
                                 onClick={async () => {
-                                    toast.info(`Syncing live environmental data for (${lat}° N, ${lon}° E)...`);
+                                    toast.info(`Analyzing GPS soil data for (${lat}° N, ${lon}° E)...`);
                                     const env = await fetchEnvironmentalData(lat, lon);
                                     if (env) {
-                                        await runAnalysis(selectedCrop, env.soil, env.weather, photoType, photoName, lastImageAnalysis);
+                                        await runAnalysis(selectedCrop, env.soil, env.weather, "soil", "");
                                     }
                                 }}
-                                className="text-xs h-8 gap-1.5 border-border/70 text-foreground hover:bg-surface-2"
+                                className="text-xs h-9 gap-2 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"
                             >
-                                <RefreshCw className={`w-3 h-3 text-emerald-400 ${loadingEnv ? "animate-spin" : ""}`} />
-                                Sync GPS Coordinates Telemetry
+                                <RefreshCw className={`w-3.5 h-3.5 ${loadingEnv ? "animate-spin" : ""}`} />
+                                <span>Analyze Soil from GPS Coordinates (मृदा परीक्षण करें)</span>
                             </Button>
-                            <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                                Recalibrates weather, rainfall & SoilGrids
+
+                            <span className="text-xs text-muted-foreground font-mono">
+                                Lat: {lat}° N · Lon: {lon}° E
                             </span>
                         </div>
+                    </div>
 
-                        {/* Target Indian Crop Selector */}
-                        <div className="space-y-2 pt-2 border-t border-border/40">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
-                                        Step 3 · Target Crop Selection (फसल चुनें)
+                    {/* Instant Soil Health Card (Derived Purely From Coordinates) */}
+                    {diagnosticResult?.soilVisualDiagnosis && (
+                        <div className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-4">
+                                <div>
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                        <FlaskConical className="w-3.5 h-3.5" />
+                                        <span>GPS Soil Health Card (भू-स्थानिक मृदा स्वास्थ्य पत्रक)</span>
                                     </div>
-                                    <label className="text-xs font-bold text-foreground flex items-center gap-1.5 block">
-                                        <Sprout className="w-3.5 h-3.5 text-emerald-400" />
-                                        <span>Select Crop to Evaluate Viability:</span>
-                                    </label>
+                                    <h2 className="text-2xl font-extrabold text-foreground">
+                                        {diagnosticResult.soilVisualDiagnosis.indianSoilClassification}
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Derived from coordinates: <strong className="text-foreground">{diagnosticResult.regionName}</strong> · Soil Order: <strong className="text-blue-400">{diagnosticResult.soilVisualDiagnosis.soilOrder || "Inceptisols"}</strong>
+                                    </p>
                                 </div>
-                                <span className="text-[11px] text-emerald-400 font-medium">
-                                    Active: Rabi Season (रबी मौसम)
-                                </span>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="px-4 py-2 rounded-xl bg-surface-2 border border-border/60 flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full bg-amber-400 animate-ping" />
+                                        <div>
+                                            <span className="text-[10px] text-muted-foreground uppercase font-semibold block">Soil pH (H2O)</span>
+                                            <span className="text-xl font-extrabold text-amber-400 leading-none">
+                                                {soilData.surface.ph} pH
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Dropdown with Indian crop categories */}
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                                <div className="sm:col-span-8">
-                                    <select
-                                        id="select-crop-target"
-                                        value={selectedCrop}
-                                        onChange={(e) => {
-                                            const newCrop = e.target.value;
-                                            setSelectedCrop(newCrop);
-                                            runAnalysis(newCrop, soilData, weatherData, photoType, photoName, lastImageAnalysis);
-                                        }}
-                                        className="w-full h-10 px-3 rounded-lg bg-surface-2 border border-border/80 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
-                                    >
-                                        <optgroup label="🥬 Vegetables (सब्जियां)">
-                                            <option value="tomato">Tomato (Tamatar / टमाटर)</option>
-                                            <option value="potato">Potato (Aloo / आलू)</option>
-                                            <option value="onion">Onion (Pyaz / प्याज)</option>
-                                            <option value="chili">Chili Pepper (Mirch / मिर्च)</option>
-                                            <option value="brinjal">Brinjal / Eggplant (Baingan / बैंगन)</option>
-                                            <option value="cauliflower">Cauliflower (Phoolgobhi / फूलगोभी)</option>
-                                            <option value="cabbage">Cabbage (Pattagobhi / पत्तागोभी)</option>
-                                            <option value="peas">Green Peas (Matar / हरी मटर)</option>
-                                            <option value="okra">Ladyfinger / Okra (Bhindi / भिंडी)</option>
-                                            <option value="carrot">Carrot (Gajar / गाजर)</option>
-                                            <option value="garlic">Garlic (Lahsun / लहसुन)</option>
-                                            <option value="spinach">Spinach (Palak / पालक)</option>
-                                            <option value="cucumber">Cucumber (Kheera / खीरा)</option>
-                                            <option value="bitter_gourd">Bitter Gourd (Karela / करेला)</option>
-                                        </optgroup>
-                                        <optgroup label="🍎 Fruits & Horticulture (फल एवं बागवानी)">
-                                            <option value="mango">Mango (Aam / आम)</option>
-                                            <option value="guava">Guava (Amrood / अमरूद)</option>
-                                            <option value="pomegranate">Pomegranate (Anar / अनार)</option>
-                                            <option value="papaya">Papaya (Papita / पपीता)</option>
-                                            <option value="banana">Banana (Kela / केला)</option>
-                                            <option value="lemon">Lemon / Acid Lime (Nimbu / नींबू)</option>
-                                            <option value="watermelon">Watermelon (Tarbooj / तरबूज)</option>
-                                            <option value="grapes">Grapes (Angoor / अंगूर)</option>
-                                            <option value="ber">Indian Jujube (Ber / बेर)</option>
-                                            <option value="cashew">Cashew Nut (Kaju / काजू)</option>
-                                        </optgroup>
-                                        <optgroup label="🌾 Cereals & Grains (अनाज)">
-                                            <option value="wheat">Wheat (Gehun / गेहूं)</option>
-                                            <option value="rice">Paddy / Rice (Dhan / धान)</option>
-                                            <option value="maize">Maize / Corn (Makka / मक्का)</option>
-                                            <option value="bajra">Pearl Millet (Bajra / बाजरा)</option>
-                                        </optgroup>
-                                        <optgroup label="🫘 Pulses & Legumes (दलहन)">
-                                            <option value="chickpea">Chickpea / Bengal Gram (Chana / चना)</option>
-                                            <option value="pigeonpea">Pigeonpea / Red Gram (Tur / Arhar / अरहर)</option>
-                                        </optgroup>
-                                        <optgroup label="🌻 Oilseeds (तिलहन)">
-                                            <option value="mustard">Mustard / Rapeseed (Sarson / सरसों)</option>
-                                            <option value="soybean">Soybean (सोयाबीन)</option>
-                                            <option value="groundnut">Groundnut / Peanut (Mungfali / मूंगफली)</option>
-                                        </optgroup>
-                                        <optgroup label="🎋 Cash Crops (नकदी फसलें)">
-                                            <option value="cotton">Cotton (Kapas / कपास)</option>
-                                            <option value="sugarcane">Sugarcane (Ganna / गन्ना)</option>
-                                        </optgroup>
-                                    </select>
+                            {/* Soil Metric Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="p-3.5 rounded-xl bg-surface-2 border border-border/40 space-y-1">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase block">Texture Class</span>
+                                    <span className="text-sm font-bold text-foreground block truncate">{soilData.surface.textureClass}</span>
+                                    <span className="text-[11px] text-muted-foreground block">
+                                        Clay: {diagnosticResult.soilProfileSummary.clayPct}% · Sand: {diagnosticResult.soilProfileSummary.sandPct}%
+                                    </span>
                                 </div>
 
-                                <div className="sm:col-span-4">
-                                    <Button
-                                        id="run-analysis-btn"
-                                        onClick={async () => {
-                                            const env = await fetchEnvironmentalData(lat, lon);
-                                            await runAnalysis(selectedCrop, env.soil, env.weather, photoType, photoName, lastImageAnalysis);
-                                        }}
-                                        disabled={loadingAnalysis || loadingEnv}
-                                        className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-950/30 gap-1.5"
-                                    >
-                                        {loadingAnalysis ? (
-                                            <>
-                                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                                Evaluating...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Activity className="w-3.5 h-3.5" />
-                                                Evaluate Viability
-                                            </>
-                                        )}
-                                    </Button>
+                                <div className="p-3.5 rounded-xl bg-surface-2 border border-border/40 space-y-1">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase block">Organic Carbon (SOC)</span>
+                                    <span className="text-sm font-bold text-emerald-400 block">{soilData.surface.soc} g/kg</span>
+                                    <span className="text-[11px] text-muted-foreground block">
+                                        Organic Matter: ~{soilData.surface.organicMatterPct}%
+                                    </span>
+                                </div>
+
+                                <div className="p-3.5 rounded-xl bg-surface-2 border border-border/40 space-y-1">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase block">Cation Exchange (CEC)</span>
+                                    <span className="text-sm font-bold text-blue-400 block">{diagnosticResult.soilProfileSummary.cec} cmol/kg</span>
+                                    <span className="text-[11px] text-muted-foreground block">
+                                        Nutrient Buffer Capacity
+                                    </span>
+                                </div>
+
+                                <div className="p-3.5 rounded-xl bg-surface-2 border border-border/40 space-y-1">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase block">Seedbed Vapsa Status</span>
+                                    <span className="text-sm font-bold text-emerald-400 block truncate">
+                                        {weatherData.current.moistureStatus || "Optimal Vapsa (वतर)"}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground block">
+                                        Moisture: {Math.round(weatherData.current.soilMoisture0_1cm * 100)}% vol
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Agronomic Verdict & Physical Tilth */}
+                            <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-2">
+                                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                                    <span>Pedological Field Diagnosis & Tilth Verdict:</span>
+                                </span>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {diagnosticResult.soilVisualDiagnosis.phVerdictNote}
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/40 text-[11px]">
+                                    <div>
+                                        <span className="text-muted-foreground">Structural Tilth: </span>
+                                        <strong className="text-foreground">{diagnosticResult.soilVisualDiagnosis.structuralTilth}</strong>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Drainage & Aeration: </span>
+                                        <strong className="text-foreground">{diagnosticResult.soilVisualDiagnosis.drainageAeration}</strong>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Surface Crusting Risk: </span>
+                                        <strong className="text-foreground">{diagnosticResult.soilVisualDiagnosis.surfaceCrustingRisk}</strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    )}
+                </div>
+            )}
 
-                        {/* Live Telemetry Summary Cards: Open-Meteo & SoilGrids */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                            {/* Weather Live Card */}
-                            <div className="p-3.5 rounded-xl bg-surface-2 border border-border/50 space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-semibold text-foreground flex items-center gap-1.5">
-                                        <Sun className="w-3.5 h-3.5 text-amber-400" />
-                                        Open-Meteo India Weather
-                                    </span>
-                                    <span className="text-[10px] text-emerald-400 font-mono">Live</span>
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* WORKSPACE VIEW 2: CROP HEALTH & DISEASE DIAGNOSTIC STUDIO */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            {studioTab === "crop_disease" && (
+                <div className="space-y-6">
+                    {/* Crop Photo Intake Card */}
+                    <div className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-4">
+                            <div>
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                    <Leaf className="w-3.5 h-3.5" />
+                                    <span>AI Crop Pathology & Disease Diagnostic Intake</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div className="p-2 rounded bg-surface-1 border border-border/30">
-                                        <span className="text-[10px] text-muted-foreground block">Air Temp</span>
-                                        <span className="font-bold text-foreground">{weatherData.current.temperature}°C</span>
-                                    </div>
-                                    <div className="p-2 rounded bg-surface-1 border border-border/30">
-                                        <span className="text-[10px] text-muted-foreground block">Topsoil Moisture</span>
-                                        <span className="font-bold text-emerald-400">{Math.round(weatherData.current.soilMoisture0_1cm * 100)}% vol</span>
-                                    </div>
-                                </div>
+                                <h3 className="text-lg font-bold text-foreground">
+                                    Upload Any Crop Foliage or Leaf Photo (फसल की फोटो अपलोड करें)
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Upload any plant or leaf photo taken from your farm or garden. AgroCloud&apos;s plant pathology model detects diseases, blights, rusts, viral leaf curl, and nutrient deficiencies, providing exact chemical and biological prescriptions.
+                                </p>
                             </div>
 
-                            {/* SoilGrids Live Card */}
-                            <div className="p-3.5 rounded-xl bg-surface-2 border border-border/50 space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-semibold text-foreground flex items-center gap-1.5">
-                                        <FlaskConical className="w-3.5 h-3.5 text-blue-400" />
-                                        ISRIC SoilGrids India
-                                    </span>
-                                    <span className="text-[10px] text-blue-400 font-mono">250m Global</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div className="p-2 rounded bg-surface-1 border border-border/30">
-                                        <span className="text-[10px] text-muted-foreground block">Soil pH (H2O)</span>
-                                        <span className="font-bold text-amber-400">{soilData.surface.ph} pH</span>
-                                    </div>
-                                    <div className="p-2 rounded bg-surface-1 border border-border/30">
-                                        <span className="text-[10px] text-muted-foreground block">Soil Texture</span>
-                                        <span className="font-bold text-foreground truncate">{soilData.surface.textureClass}</span>
-                                    </div>
-                                </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="gap-2 text-xs border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"
+                                >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    Upload File
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => startCamera()}
+                                    className="gap-2 text-xs text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10"
+                                >
+                                    <Camera className="w-3.5 h-3.5" />
+                                    Live Camera
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Quick Disease Sample Presets Strip */}
+                        <div className="space-y-2">
+                            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                <Bug className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Try Common Crop Disease Samples (1-Click Test):</span>
+                            </span>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                                {CROP_DISEASE_PRESETS.map((preset) => {
+                                    const isCurrent = cropPhotoPreview === preset.imageUrl;
+                                    return (
+                                        <button
+                                            key={preset.id}
+                                            type="button"
+                                            onClick={() => handleSelectDiseasePreset(preset)}
+                                            className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                                isCurrent
+                                                    ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500 shadow-md"
+                                                    : "border-border/60 bg-surface-2 hover:border-emerald-500/40 hover:bg-surface-2/80"
+                                            }`}
+                                        >
+                                            <div className="aspect-[4/3] w-full rounded-lg overflow-hidden bg-muted mb-2 relative">
+                                                <img
+                                                    src={preset.imageUrl}
+                                                    alt={preset.title}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        const target = e.currentTarget;
+                                                        if (!target.src.includes("tomato.jpg")) target.src = "/samples/tomato.jpg";
+                                                    }}
+                                                />
+                                                {isCurrent && (
+                                                    <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-semibold text-foreground truncate">{preset.title.split(" (")[0]}</h4>
+                                                <p className="text-[10px] text-muted-foreground truncate italic">{preset.diseaseHint}</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Results Section */}
+                    {/* AI CROP HEALTH & DISEASE DIAGNOSTIC REPORT CARD */}
+                    {diagnosticResult?.cropHealthAnalysis ? (
+                        <div className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-5">
+                                <div>
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                                        <Stethoscope className="w-3.5 h-3.5" />
+                                        <span>Full Crop Pathology & Foliar Health Report (पौध स्वास्थ्य एवं रोग निदान रिपोर्ट)</span>
+                                    </div>
+                                    <h2 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
+                                        <span>{diagnosticResult.cropHealthAnalysis.primaryDisease.name}</span>
+                                        <span className="text-sm font-normal text-muted-foreground">
+                                            ({diagnosticResult.cropHealthAnalysis.primaryDisease.hindiName})
+                                        </span>
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Crop: <strong className="text-foreground">{diagnosticResult.cropHealthAnalysis.cropName}</strong> · Pathogen: <strong className="text-amber-400 italic">{diagnosticResult.cropHealthAnalysis.primaryDisease.pathogen}</strong> ({diagnosticResult.cropHealthAnalysis.primaryDisease.pathogenType})
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className={`px-4 py-2.5 rounded-xl border flex items-center gap-3 shadow-md ${
+                                        diagnosticResult.cropHealthAnalysis.healthStatus === "Healthy"
+                                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                                            : diagnosticResult.cropHealthAnalysis.healthStatus === "Mild Stress"
+                                            ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                                            : "bg-rose-500/15 border-rose-500/40 text-rose-400"
+                                    }`}>
+                                        {diagnosticResult.cropHealthAnalysis.healthStatus === "Healthy" ? (
+                                            <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
+                                        ) : (
+                                            <ShieldAlert className="w-6 h-6 shrink-0" />
+                                        )}
+                                        <div>
+                                            <span className="text-[10px] uppercase font-bold tracking-wider block opacity-90">
+                                                Health Vitality Score:
+                                            </span>
+                                            <span className="text-lg font-extrabold leading-none">
+                                                {diagnosticResult.cropHealthAnalysis.overallHealthScore}% · {diagnosticResult.cropHealthAnalysis.healthStatus}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Symptoms & Pathology Notes */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-2">
+                                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                                        <span>Observed Symptoms (लक्षण):</span>
+                                    </h4>
+                                    <ul className="space-y-1.5 text-xs text-muted-foreground">
+                                        {diagnosticResult.cropHealthAnalysis.primaryDisease.symptomsObserved.map((sym, i) => (
+                                            <li key={i} className="flex items-start gap-2">
+                                                <span className="text-amber-400 font-bold">•</span>
+                                                <span>{sym}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-2">
+                                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <CloudRain className="w-3.5 h-3.5 text-cyan-400" />
+                                        <span>Weather & Microclimate Correlation:</span>
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        {diagnosticResult.cropHealthAnalysis.weatherAttribution}
+                                    </p>
+                                    <div className="text-[11px] text-zinc-300 pt-1 border-t border-border/30">
+                                        Pathology: {diagnosticResult.cropHealthAnalysis.primaryDisease.pathologyNotes}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 3-Pillar Treatment Protocols */}
+                            <div className="space-y-4 pt-2">
+                                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <Pill className="w-4 h-4 text-emerald-400" />
+                                    <span>Prescription & Agronomic Treatment Plan (उपचार एवं प्रबंधन):</span>
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Chemical Treatments */}
+                                    <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-3">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                                            Pillar 1 · Fast-Acting Chemical Curatives
+                                        </div>
+                                        {diagnosticResult.cropHealthAnalysis.fastActingChemicals.length > 0 ? (
+                                            <div className="space-y-2.5">
+                                                {diagnosticResult.cropHealthAnalysis.fastActingChemicals.map((chem, idx) => (
+                                                    <div key={idx} className="p-2.5 rounded-lg bg-surface-1 border border-border/30 text-xs space-y-1">
+                                                        <div className="font-bold text-foreground">{chem.commercialBrand}</div>
+                                                        <div className="text-[11px] text-blue-300 font-mono">{chem.activeIngredient}</div>
+                                                        <div className="text-[11px] text-emerald-400 font-semibold">Dosage: {chem.dosagePerLiter}</div>
+                                                        <div className="text-[10px] text-muted-foreground">{chem.applicationMethod}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">Foliage is healthy. Zero chemical spraying required.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Biological & Organic Remedies */}
+                                    <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-3">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                                            Pillar 2 · Biological & Organic Controls
+                                        </div>
+                                        {diagnosticResult.cropHealthAnalysis.organicBioRemedies.length > 0 ? (
+                                            <div className="space-y-2.5">
+                                                {diagnosticResult.cropHealthAnalysis.organicBioRemedies.map((bio, idx) => (
+                                                    <div key={idx} className="p-2.5 rounded-lg bg-surface-1 border border-border/30 text-xs space-y-1">
+                                                        <div className="font-bold text-foreground">{bio.name}</div>
+                                                        <div className="text-[11px] text-emerald-300 font-mono">{bio.type}</div>
+                                                        <div className="text-[11px] text-emerald-400 font-semibold">Dosage: {bio.dosagePerLiter}</div>
+                                                        <div className="text-[10px] text-muted-foreground">{bio.preparationNotes}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">No active organic remedies required for healthy canopy.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Cultural Preventative Practices */}
+                                    <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-3">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                                            Pillar 3 · Cultural & Preventative Care
+                                        </div>
+                                        <div className="space-y-2.5">
+                                            {diagnosticResult.cropHealthAnalysis.preventativePractices.map((prev, idx) => (
+                                                <div key={idx} className="p-2.5 rounded-lg bg-surface-1 border border-border/30 text-xs space-y-1">
+                                                    <div className="font-bold text-foreground">{prev.title}</div>
+                                                    <div className="text-[11px] text-muted-foreground leading-relaxed">{prev.description}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="p-8 rounded-2xl bg-surface-1 border border-dashed border-border/70 text-center space-y-3">
+                            <Leaf className="w-10 h-10 text-emerald-400 mx-auto opacity-75" />
+                            <h4 className="text-base font-bold text-foreground">
+                                Upload a Crop Leaf or Plant Photo to Run Pathology Diagnostics
+                            </h4>
+                            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                                Click the upload button above or select one of the disease sample presets to inspect real-time AI disease detection, visible symptom breakdown, and fungicide prescriptions.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* COMMON RESULTS SECTION: DOSSIER, RECOMMENDATIONS & HYDROLOGY */}
+            {/* ───────────────────────────────────────────────────────────── */}
             {diagnosticResult && (
                 <div id="agrocloud-results-container" className="space-y-8 pt-4">
-                    {/* SECTION 1: TARGET CROP VIABILITY DOSSIER (FIRST SECTION) */}
+                    {/* SECTION 1: TARGET CROP VIABILITY DOSSIER */}
                     <div id="target-crop-viability-dossier" className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-5">
                             <div>
                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                                     <Sprout className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>Section 1 · Target Crop Viability Dossier (फसल अनुकूलता एवं व्यवहार्यता रिपोर्ट)</span>
+                                    <span>Target Crop Viability Dossier (फसल अनुकूलता एवं व्यवहार्यता रिपोर्ट)</span>
                                 </div>
                                 <h2 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
                                     <span>{diagnosticResult.targetCrop.commonName}</span>
@@ -1779,11 +1644,10 @@ export function CropDiagnosticStudio() {
                                     </span>
                                 </h2>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Evaluated against photo-detected <strong className="text-amber-400">pH {soilData.surface.ph}</strong> ({soilData.surface.textureClass}), regional rainfall, and active season: <strong className="text-emerald-400">{diagnosticResult.currentIndianSeason}</strong>
+                                    Evaluated against GPS-derived <strong className="text-amber-400">pH {soilData.surface.ph}</strong> ({soilData.surface.textureClass}), regional rainfall, and active season: <strong className="text-emerald-400">{diagnosticResult.currentIndianSeason}</strong>
                                 </p>
                             </div>
 
-                            {/* Prominent Viability Verdict Badge */}
                             <div className="flex items-center gap-3">
                                 <div
                                     className={`px-4 py-2.5 rounded-xl border flex items-center gap-3 shadow-md ${
@@ -1813,9 +1677,8 @@ export function CropDiagnosticStudio() {
                             </div>
                         </div>
 
-                        {/* Soil & Crop Compatibility Matrix */}
+                        {/* Compatibility Matrix */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {/* Soil pH Card */}
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/50 space-y-1">
                                 <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Soil pH Compatibility</span>
                                 <div className="flex items-center justify-between">
@@ -1833,7 +1696,6 @@ export function CropDiagnosticStudio() {
                                 </span>
                             </div>
 
-                            {/* Soil Texture Card */}
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/50 space-y-1">
                                 <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Soil Texture & Tilth</span>
                                 <div className="flex items-center justify-between">
@@ -1843,198 +1705,94 @@ export function CropDiagnosticStudio() {
                                     </span>
                                 </div>
                                 <span className="text-[11px] text-muted-foreground block truncate">
-                                    {diagnosticResult.soilVisualDiagnosis?.indianSoilClassification || "Analyzed from photo"}
+                                    {diagnosticResult.soilVisualDiagnosis?.indianSoilClassification || "GPS-Derived"}
                                 </span>
                             </div>
 
-                            {/* Season Window Card */}
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/50 space-y-1">
-                                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Growing Season</span>
+                                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Active Season Window</span>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-emerald-400">{diagnosticResult.targetCrop.indianSeason}</span>
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                                        Active
+                                    <span className="text-xs font-bold text-foreground truncate">{diagnosticResult.targetCrop.indianSeason.split(" ")[0]}</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                        In Window
+                                    </span>
+                                </div>
+                                <span className="text-[11px] text-emerald-400 block truncate">
+                                    {diagnosticResult.viabilityVerdict.currentSeasonMatch}
+                                </span>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-surface-2 border border-border/50 space-y-1">
+                                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Water Balance Factor</span>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-foreground truncate">{diagnosticResult.rainfallFactor.waterStatus.split(" ")[0]}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                        diagnosticResult.rainfallFactor.netWaterBalanceMm >= 0 ? "text-emerald-400 bg-emerald-500/10" : "text-amber-400 bg-amber-500/10"
+                                    }`}>
+                                        {diagnosticResult.rainfallFactor.netWaterBalanceMm >= 0 ? "+" : ""}
+                                        {diagnosticResult.rainfallFactor.netWaterBalanceMm} mm
                                     </span>
                                 </div>
                                 <span className="text-[11px] text-muted-foreground block truncate">
-                                    Maturity: ~{diagnosticResult.targetCrop.maturityDays} days
-                                </span>
-                            </div>
-
-                            {/* Water & Rain Card */}
-                            <div className="p-3 rounded-xl bg-surface-2 border border-border/50 space-y-1">
-                                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Water Demand & Rain</span>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-base font-bold text-cyan-400">{diagnosticResult.rainfallFactor.cropDemandMm} mm</span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                                        diagnosticResult.rainfallFactor.netWaterBalanceMm >= 0
-                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                            : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                                    }`}>
-                                        {diagnosticResult.rainfallFactor.netWaterBalanceMm >= 0 ? "Sufficient" : "Irrigation Req"}
-                                    </span>
-                                </div>
-                                <span className="text-[11px] text-muted-foreground block">
-                                    Rainfall: {diagnosticResult.rainfallFactor.localAnnualMm} mm/yr
+                                    Demand: {diagnosticResult.rainfallFactor.cropDemandMm} mm
                                 </span>
                             </div>
                         </div>
 
-                        {/* If YES: Best Season to Grow Details */}
-                        {diagnosticResult.viabilityVerdict.verdict === "VIABLE (YES)" && (
-                            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                        <span>High Viability Confirmed: Optimal Indian Sowing & Growth Window (सर्वोत्तम बुवाई मौसम)</span>
-                                    </span>
-                                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
-                                        {diagnosticResult.viabilityVerdict.currentSeasonMatch}
-                                    </span>
-                                </div>
-                                <div className="text-sm font-semibold text-foreground">
-                                    {diagnosticResult.viabilityVerdict.bestSeason}
-                                </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {diagnosticResult.viabilityVerdict.seasonDetails} Typical crop duration: ~{diagnosticResult.targetCrop.maturityDays} days from sowing to harvest.
-                                </p>
-                            </div>
-                        )}
-
-                        {/* If NOT VERY VIABLE / CONDITIONAL: "Why No" & "What Should Be Changed" + Alternative Suggestions */}
+                        {/* Actionable Remedies if Not Completely Viable */}
                         {diagnosticResult.viabilityVerdict.whyNo.length > 0 && (
-                            <div className="space-y-4 pt-1">
-                                {/* Viability Alert Header */}
-                                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div className="flex items-start gap-2.5">
-                                        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                                        <div>
-                                            <h4 className="text-sm font-bold text-amber-300">
-                                                Agronomic Viability Alert for {diagnosticResult.targetCrop.commonName}
-                                            </h4>
-                                            <p className="text-xs text-amber-200/80 mt-0.5">
-                                                This crop faces agronomic bottlenecks in your photo-detected soil (<strong className="text-amber-300">pH {soilData.surface.ph}</strong>, {soilData.surface.textureClass}). Review the root causes and mandatory remediations below, or select a high-viability recommended alternative crop.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <a
-                                        href="#recommended-crops-section"
-                                        className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors self-start sm:self-center"
-                                    >
-                                        <span>See Alternative Crops</span>
-                                        <ChevronDown className="w-3.5 h-3.5" />
-                                    </a>
+                            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                                <div className="font-bold text-amber-400 text-xs flex items-center gap-1.5">
+                                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                                    <span>Agronomic Bottlenecks & Required Changes (कारण एवं उपाय):</span>
                                 </div>
-
-                                {/* 2-Column Bottlenecks & Solutions */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Why No / Bottlenecks */}
-                                    <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-3">
-                                        <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
-                                            <AlertTriangle className="w-4 h-4 shrink-0" />
-                                            <span>Why No / Identified Agronomic Bottlenecks (कारण एवं कमियां):</span>
-                                        </div>
-                                        <ul className="space-y-2.5 text-xs text-rose-200/90 leading-relaxed">
-                                            {diagnosticResult.viabilityVerdict.whyNo.map((reason, i) => (
-                                                <li key={i} className="flex items-start gap-2 bg-rose-500/5 p-2 rounded-lg border border-rose-500/20">
-                                                    <span className="text-rose-400 font-bold mt-0.5">•</span>
-                                                    <span>{reason}</span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                    <div className="space-y-1.5">
+                                        <span className="font-semibold text-zinc-300 block">Identified Limiting Factors (बाधाएं):</span>
+                                        <ul className="space-y-1 text-zinc-400">
+                                            {diagnosticResult.viabilityVerdict.whyNo.map((why, i) => (
+                                                <li key={i} className="flex items-start gap-1.5">
+                                                    <span className="text-rose-400 font-bold">•</span>
+                                                    <span>{why}</span>
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
-
-                                    {/* What Should Be Changed / Actionable Remediation */}
-                                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
-                                        <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                                            <Sparkles className="w-4 h-4 shrink-0" />
-                                            <span>What Should Be Changed (आवश्यक सुधार, सिफारिशें एवं वैज्ञानिक उपाय):</span>
-                                        </div>
-                                        <ul className="space-y-2.5 text-xs text-emerald-200/90 leading-relaxed">
+                                    <div className="space-y-1.5">
+                                        <span className="font-semibold text-emerald-400 block">Scientific Prescriptions (सुझाव):</span>
+                                        <ul className="space-y-1 text-emerald-300">
                                             {diagnosticResult.viabilityVerdict.whatShouldBeChanged.map((sol, i) => (
-                                                <li key={i} className="flex items-start gap-2 bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/20">
-                                                    <span className="text-emerald-400 font-bold mt-0.5">✓</span>
+                                                <li key={i} className="flex items-start gap-1.5">
+                                                    <span className="text-emerald-400 font-bold">✓</span>
                                                     <span>{sol}</span>
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
                                 </div>
-
-                                {/* Instant High-Viability Alternative Crops Switcher */}
-                                <div className="p-4 rounded-xl bg-surface-2 border border-border/50 space-y-3">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <Sprout className="w-4 h-4 text-emerald-400" />
-                                            <h4 className="text-xs font-bold text-foreground">
-                                                Recommended High-Viability Alternative Crops for this Soil (pH {soilData.surface.ph}, {soilData.surface.textureClass}):
-                                            </h4>
-                                        </div>
-                                        <a
-                                            href="#recommended-crops-section"
-                                            className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 transition-colors"
-                                        >
-                                            <span>View All ({diagnosticResult.topRecommendedCrops.length})</span>
-                                            <ChevronDown className="w-3.5 h-3.5" />
-                                        </a>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                        {diagnosticResult.topRecommendedCrops.slice(0, 3).map((alt) => (
-                                            <div
-                                                key={alt.cropKey}
-                                                className="p-3 rounded-lg bg-surface-1 border border-border/60 hover:border-emerald-500/50 transition-all flex flex-col justify-between space-y-2"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-foreground truncate">{alt.commonName}</span>
-                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                                                        {alt.suitabilityScore}% Match
-                                                    </span>
-                                                </div>
-                                                <p className="text-[11px] text-muted-foreground line-clamp-2">
-                                                    {alt.whyExcels}
-                                                </p>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="w-full h-7 text-[11px] border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"
-                                                    onClick={() => handlePickRecommendedCrop(alt.cropKey)}
-                                                >
-                                                    Switch to {alt.commonName.split(" ")[0]}
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </div>
 
-                    {/* SECTION 2: TOP RECOMMENDED CROPS FOR THIS INDIAN SOIL & CLIMATE (PLACED BELOW DOSSIER) */}
+                    {/* SECTION 2: CATEGORIZED RECOMMENDED CROPS FOR THIS GPS SOIL */}
                     <div id="recommended-crops-section" className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-5">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-4">
                             <div>
                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                                     <Sprout className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>Section 2 · Alternative & Recommended Crops (अनुशंसित फसलें एवं सब्जियां)</span>
+                                    <span>Recommended Crops for this GPS Soil & Climate (अनुशंसित फसलें)</span>
                                 </div>
-                                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                                    <span>Recommended Crops, Vegetables & Fruits for this Soil & Climate</span>
+                                <h2 className="text-xl font-bold text-foreground">
+                                    Best Crops, Vegetables & Fruits for this Soil (pH {soilData.surface.ph})
                                 </h2>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Dynamically calibrated for photo-derived <strong className="text-amber-400">pH {soilData.surface.ph}</strong> ({soilData.surface.textureClass}), regional rainfall ({diagnosticResult.rainfallFactor.localAnnualMm} mm), and active season: <strong className="text-emerald-400">{diagnosticResult.currentIndianSeason}</strong>
-                                </p>
                             </div>
 
-                            {/* Category Filter Tabs */}
                             <div className="inline-flex rounded-lg bg-surface-2 p-1 border border-border/60 text-xs font-medium">
                                 <button
                                     type="button"
                                     onClick={() => setRecommendationCategory("all")}
                                     className={`px-3 py-1 rounded-md transition-all ${
-                                        recommendationCategory === "all"
-                                            ? "bg-emerald-600 text-white font-semibold shadow-sm"
-                                            : "text-muted-foreground hover:text-foreground"
+                                        recommendationCategory === "all" ? "bg-emerald-600 text-white font-semibold" : "text-muted-foreground hover:text-foreground"
                                     }`}
                                 >
                                     All ({diagnosticResult.topRecommendedCrops.length})
@@ -2042,44 +1800,29 @@ export function CropDiagnosticStudio() {
                                 <button
                                     type="button"
                                     onClick={() => setRecommendationCategory("vegetables")}
-                                    className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
-                                        recommendationCategory === "vegetables"
-                                            ? "bg-emerald-600 text-white font-semibold shadow-sm"
-                                            : "text-muted-foreground hover:text-foreground"
+                                    className={`px-3 py-1 rounded-md transition-all ${
+                                        recommendationCategory === "vegetables" ? "bg-emerald-600 text-white font-semibold" : "text-muted-foreground hover:text-foreground"
                                     }`}
                                 >
-                                    <span>🥬 Vegetables</span>
-                                    {diagnosticResult.topVegetables && (
-                                        <span className="text-[10px] opacity-80">({diagnosticResult.topVegetables.length})</span>
-                                    )}
+                                    🥬 Vegetables ({diagnosticResult.topVegetables?.length || 0})
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setRecommendationCategory("fruits")}
-                                    className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
-                                        recommendationCategory === "fruits"
-                                            ? "bg-emerald-600 text-white font-semibold shadow-sm"
-                                            : "text-muted-foreground hover:text-foreground"
+                                    className={`px-3 py-1 rounded-md transition-all ${
+                                        recommendationCategory === "fruits" ? "bg-emerald-600 text-white font-semibold" : "text-muted-foreground hover:text-foreground"
                                     }`}
                                 >
-                                    <span>🍎 Fruits</span>
-                                    {diagnosticResult.topFruits && (
-                                        <span className="text-[10px] opacity-80">({diagnosticResult.topFruits.length})</span>
-                                    )}
+                                    🍎 Fruits ({diagnosticResult.topFruits?.length || 0})
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setRecommendationCategory("staples")}
-                                    className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
-                                        recommendationCategory === "staples"
-                                            ? "bg-emerald-600 text-white font-semibold shadow-sm"
-                                            : "text-muted-foreground hover:text-foreground"
+                                    className={`px-3 py-1 rounded-md transition-all ${
+                                        recommendationCategory === "staples" ? "bg-emerald-600 text-white font-semibold" : "text-muted-foreground hover:text-foreground"
                                     }`}
                                 >
-                                    <span>🌾 Grains & Pulses</span>
-                                    {diagnosticResult.topStaples && (
-                                        <span className="text-[10px] opacity-80">({diagnosticResult.topStaples.length})</span>
-                                    )}
+                                    🌾 Grains & Cash ({diagnosticResult.topStaples?.length || 0})
                                 </button>
                             </div>
                         </div>
@@ -2088,17 +1831,11 @@ export function CropDiagnosticStudio() {
                         {(() => {
                             const displayCrops =
                                 recommendationCategory === "vegetables"
-                                    ? diagnosticResult.topVegetables && diagnosticResult.topVegetables.length > 0
-                                        ? diagnosticResult.topVegetables
-                                        : diagnosticResult.topRecommendedCrops.filter((c) => c.category === "vegetables")
+                                    ? diagnosticResult.topVegetables || []
                                     : recommendationCategory === "fruits"
-                                    ? diagnosticResult.topFruits && diagnosticResult.topFruits.length > 0
-                                        ? diagnosticResult.topFruits
-                                        : diagnosticResult.topRecommendedCrops.filter((c) => c.category === "fruits")
+                                    ? diagnosticResult.topFruits || []
                                     : recommendationCategory === "staples"
-                                    ? diagnosticResult.topStaples && diagnosticResult.topStaples.length > 0
-                                        ? diagnosticResult.topStaples
-                                        : diagnosticResult.topRecommendedCrops.filter((c) => c.category !== "vegetables" && c.category !== "fruits")
+                                    ? diagnosticResult.topStaples || []
                                     : diagnosticResult.topRecommendedCrops;
 
                             return (
@@ -2108,7 +1845,6 @@ export function CropDiagnosticStudio() {
                                         return (
                                             <div
                                                 key={crop.cropKey}
-                                                id={`rec-card-${crop.cropKey}`}
                                                 className={`p-4 rounded-xl border transition-all space-y-3 cursor-pointer ${
                                                     isSelected
                                                         ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500 shadow-md"
@@ -2117,20 +1853,9 @@ export function CropDiagnosticStudio() {
                                                 onClick={() => handlePickRecommendedCrop(crop.cropKey)}
                                             >
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                                            Rank #{idx + 1}
-                                                        </span>
-                                                        {crop.isInSeason ? (
-                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                                                🌱 In Season
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                                                Next: {crop.indianSeason.split(" ")[0]}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                                        Rank #{idx + 1}
+                                                    </span>
                                                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs">
                                                         {crop.suitabilityScore}% Match
                                                     </span>
@@ -2152,10 +1877,6 @@ export function CropDiagnosticStudio() {
                                                         <span className="font-semibold text-amber-400">{crop.soilMatchText}</span>
                                                     </div>
                                                     <div className="flex justify-between text-[11px]">
-                                                        <span className="text-muted-foreground">Rainfall Match:</span>
-                                                        <span className="font-medium text-foreground">{crop.rainfallMatchText}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-[11px]">
                                                         <span className="text-muted-foreground">Water Demand:</span>
                                                         <span className="font-mono text-foreground">{crop.waterDemandMm} mm</span>
                                                     </div>
@@ -2173,7 +1894,7 @@ export function CropDiagnosticStudio() {
                                                         handlePickRecommendedCrop(crop.cropKey);
                                                     }}
                                                 >
-                                                    {isSelected ? "Currently Inspected in Dossier" : "Inspect Soil Viability in Dossier ↑"}
+                                                    {isSelected ? "Inspected in Dossier" : "Inspect Soil Viability ↑"}
                                                 </Button>
                                             </div>
                                         );
@@ -2183,19 +1904,19 @@ export function CropDiagnosticStudio() {
                         })()}
                     </div>
 
-                    {/* SECTION 3: MONSOON & RAINFALL FACTOR */}
+                    {/* SECTION 3: MONSOON & RAINFALL HYDROLOGY */}
                     <div id="monsoon-rainfall-factor-section" className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-4">
                             <div>
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-wider mb-1">
                                     <CloudRain className="w-3.5 h-3.5 text-cyan-400" />
-                                    <span>Section 3 · Monsoon & Hydrology (वर्षा एवं जल संतुलन)</span>
+                                    <span>Monsoon & Rootzone Water Balance</span>
                                 </div>
                                 <h3 className="text-lg font-bold text-foreground">
-                                    Monsoon & Rootzone Rainfall Factor
+                                    Rainfall Factor & Seedbed Moisture
                                 </h3>
                             </div>
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium self-start sm:self-center ${
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                                 diagnosticResult.rainfallFactor.waterStatus.includes("Optimal")
                                     ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                                     : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
@@ -2206,25 +1927,13 @@ export function CropDiagnosticStudio() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/40">
-                                <span className="text-muted-foreground block text-[10px]">Crop Water Requirement</span>
-                                <span className="font-bold text-foreground text-sm">
-                                    {diagnosticResult.rainfallFactor.cropDemandMm} mm
-                                </span>
-                                <span className="text-[10px] text-muted-foreground block">
-                                    Range: {diagnosticResult.rainfallFactor.cropMinMm}-{diagnosticResult.rainfallFactor.cropMaxMm} mm
-                                </span>
+                                <span className="text-muted-foreground block text-[10px]">Crop Requirement</span>
+                                <span className="font-bold text-foreground text-sm">{diagnosticResult.rainfallFactor.cropDemandMm} mm</span>
                             </div>
-
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/40">
-                                <span className="text-muted-foreground block text-[10px]">Regional Annual Rainfall</span>
-                                <span className="font-bold text-cyan-400 text-sm">
-                                    {diagnosticResult.rainfallFactor.localAnnualMm} mm
-                                </span>
-                                <span className="text-[10px] text-muted-foreground block">
-                                    7-Day Forecast: {diagnosticResult.rainfallFactor.local7DayForecastMm} mm
-                                </span>
+                                <span className="text-muted-foreground block text-[10px]">Regional Rainfall</span>
+                                <span className="font-bold text-cyan-400 text-sm">{diagnosticResult.rainfallFactor.localAnnualMm} mm</span>
                             </div>
-
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/40">
                                 <span className="text-muted-foreground block text-[10px]">Net Water Balance</span>
                                 <span className={`font-bold text-sm ${
@@ -2233,35 +1942,24 @@ export function CropDiagnosticStudio() {
                                     {diagnosticResult.rainfallFactor.netWaterBalanceMm >= 0 ? "+" : ""}
                                     {diagnosticResult.rainfallFactor.netWaterBalanceMm} mm
                                 </span>
-                                <span className="text-[10px] text-muted-foreground block">
-                                    {diagnosticResult.rainfallFactor.irrigationCyclesNeeded > 0
-                                        ? `${diagnosticResult.rainfallFactor.irrigationCyclesNeeded} irrigation rounds required (नहर/ट्यूबवेल)`
-                                        : "Rainfed sufficient"}
-                                </span>
                             </div>
-
                             <div className="p-3 rounded-xl bg-surface-2 border border-border/40">
                                 <span className="text-muted-foreground block text-[10px]">Topsoil Vapsa Moisture</span>
-                                <span className="font-bold text-emerald-400 text-sm">
-                                    {diagnosticResult.rainfallFactor.topsoilMoistureVolPct}% vol
-                                </span>
-                                <span className="text-[10px] text-zinc-300 block truncate">
-                                    {diagnosticResult.rainfallFactor.seedbedMoistureVerdict}
-                                </span>
+                                <span className="font-bold text-emerald-400 text-sm">{diagnosticResult.rainfallFactor.topsoilMoistureVolPct}% vol</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* SECTION 4: AGROCLOUD PRECISION ACTION PLAN (FINAL SECTION) */}
+                    {/* SECTION 4: AGROCLOUD PRECISION ACTION PLAN */}
                     <div id="agrocloud-precision-action-plan" className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-border/40 pb-4">
                             <div>
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
                                     <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>Section 4 · Precision Agronomy (सटीक कार्य योजना)</span>
+                                    <span>Precision Action Plan (सटीक कार्य योजना)</span>
                                 </div>
                                 <h3 className="text-lg font-bold text-foreground">
-                                    AgroCloud Precision Action Plan
+                                    AgroCloud Precision Agronomy Directives
                                 </h3>
                             </div>
                             <span className="text-xs text-muted-foreground">

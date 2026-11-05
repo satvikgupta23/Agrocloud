@@ -27,41 +27,58 @@ Rather than only showing that vegetation health has dropped, AgroCloud correlate
 
 ## ✨ Key Features & Latest Updates
 
-### 🔬 1. Soil & Crop Diagnostic Studio
-* **Interactive Diagnostic Studio:** Instant upload or live camera capture for multi-spectral crop leaf and soil photo analysis.
-* **Real-Time Camera Integration:** Full HTML5 `getUserMedia` camera support with rear/front lens switching (`environment` vs `user`), live preview, and fallback image picker.
-* **In-Browser Computer Vision Pixel Extraction:**
-  * Client-side canvas sampling for average RGB, Hue, Saturation, Brightness, and Luminance.
-  * Correlation with standard **Munsell Soil Color Charts** (e.g., 10YR 5/3 Alluvial, 10YR 2/2 Black Vertisol, 5YR 4/6 Red Loam, 2.5YR 4/8 Laterite, 10YR 7/4 Arid Desert Sand, 10YR 3/3 Terai Loam).
-  * Automated deduction of structural tilth, visual organic matter, surface crusting risk, and drainage aeration.
-* **34 Calibrated Agro-Ecological Indian Crop Profiles:**
-  * **Vegetables (सब्जियां):** Tomato (Tamatar), Potato (Aloo), Onion (Pyaz), Chili (Mirch), Brinjal (Baingan), Cauliflower (Phoolgobhi), Cabbage (Patthogobhi), Green Peas (Matar), Okra (Bhindi), Carrot (Gajar), Garlic (Lahsun), Spinach (Palak), Cucumber (Kheera), Bitter Gourd (Karela).
-  * **Fruits & Horticulture (फल व बागवानी):** Mango (Aam), Guava (Amrud), Pomegranate (Anar), Papaya (Papita), Banana (Kela), Lemon (Nimbu), Watermelon (Tarbooz), Grapes (Angoor), Indian Jujube (Ber), Cashew (Kaju).
-  * **Staples, Cereals, Pulses & Cash Crops (अनाज, दलहन व नकदी):** Wheat (Gehun), Rice / Paddy (Dhan), Maize (Makka), Bajra (Pearl Millet), Chickpea / Bengal Gram (Chana), Mustard (Sarson), Soybean, Groundnut (Moongphali), Cotton (Kapas), Sugarcane (Ganna).
-* **Categorized Multi-Tier Recommendations:**
-  * Dedicated tabs for **Top Vegetables**, **Top Fruits & Horticulture**, and **Top Staples & Cash Crops**, along with overall suitability rankings.
-* **Dynamic Indian Agricultural Season Engine:**
-  * Real-time calendar alignment detecting **Rabi (रबी)**, **Kharif (खरीफ)**, or **Zaid (जायद)** seasons.
-  * Season-weighted suitability scoring favoring crops within their active sowing and growth calendar.
-* **Target Crop Agronomic Viability Evaluation ("Can I grow crop X here?"):**
-  * **"Why No" Root-Cause Diagnosis:** Detects specific limiting factors including soil pH extremes (acidity/alkalinity), off-season heat/cold stress, rainfall deficit, clay compaction, or insufficient organic carbon.
-  * **"What to Change" Actionable Remedies:** Delivers precise corrective prescriptions (e.g., Agricultural Lime $\text{CaCO}_3$ dosages for acidic soils, Agricultural Gypsum or Elemental Sulfur with canal flushing for alkaline soils, Sesbania green manuring, drip irrigation scheduling, and organic manure incorporation).
-* **Calibrated Regional Indian Soil & Climate Presets:**
-  * Indo-Gangetic Alluvial Loam (Punjab / Haryana)
-  * Deccan Black Vertisol (Maharashtra / Vidarbha)
-  * Red Sandy Loam (Karnataka / South Deccan)
-  * Desert Arid Sandy Soil (Rajasthan / Thar Basin)
-  * Acidic Laterite Soil (Kerala / Western Ghats)
-  * Terai Wetland Clay Loam (Uttar Pradesh / Bihar)
-* **Live Environmental Telemetry (Open-Meteo & ISRIC SoilGrids 2.0):**
-  * Live ambient temperature, relative humidity, wind speed, and precipitation.
-  * Sub-surface soil temperature ($0\,\text{cm}$ and $6\,\text{cm}$) and volumetric soil moisture ($0\text{--}1\,\text{cm}$ and $1\text{--}3\,\text{cm}$).
-  * Automated **"Vapsa" (वतर)** seedbed moisture status verdict.
-  * 7-day cumulative **Growing Degree Days (GDD)**, daily GDD accumulation rate, and reference **Evapotranspiration ($\text{ET}_0$)**.
-  * Soil chemical and physical parameters: pH, Soil Organic Carbon (SOC), Cation Exchange Capacity (CEC), and USDA texture classification.
-  * Built-in direct client fallbacks ensuring uninterrupted operation if local API proxies are offline.
+### 📍 1. Zero-Photo GPS Soil & Nationwide Pedological Intelligence
+* **Zero-Photo Soil Prediction:** Completely eliminates the need for soil photographs. Derives comprehensive physical, chemical, and pedological soil health parameters purely from **GPS coordinates (Latitude & Longitude)** or browser location detection.
+* **Pan-India Soil Survey Integration:** Deep geospatial database mapping coordinates to India's official pedological zones and USDA Soil Orders:
+  * **Indo-Gangetic Alluvial Silt Loam** (*Inceptisols / Entisols* - Punjab, Haryana, UP, Bihar, Bengal)
+  * **Deccan Black Cotton Vertisol / Regur** (*Vertisols* - Maharashtra, MP, Gujarat Saurashtra, North Karnataka)
+  * **Peninsular Red Loam** (*Alfisols* - Karnataka, Telangana, Andhra Pradesh, Tamil Nadu)
+  * **Thar Desert Arid Sandy Soil** (*Aridisols* - Rajasthan, North Gujarat)
+  * **Western Ghats & Coastal Laterite** (*Oxisols / Ultisols* - Kerala, Coastal Konkan, Goa)
+  * **Sub-Himalayan Terai Humus Loam** (*Mollisols* - Himalayan foothills of UP, Bihar, Uttarakhand)
+* **Empirical Soil Telemetry Blending:** Seamlessly combines live **ISRIC SoilGrids 2.0 (250m)** satellite telemetry with national pedological models for global accuracy:
+  * Soil pH in $\text{H}_2\text{O}$ with agronomic status classification (Acidic, Neutral, Alkaline, Sodic).
+  * Soil Organic Carbon (SOC in $\text{g/kg}$) and Organic Matter percentage.
+  * Cation Exchange Capacity (CEC in $\text{cmol(c)/kg}$) and base saturation.
+  * Precise texture breakdown (Clay %, Sand %, Silt %) and USDA texture classification.
+  * Structural tilth, surface crusting risk, compaction index, and drainage/aeration dynamics.
+  * Macro-nutrient retention capacity (N, P, K status) and rootzone salinity risk.
+* **Live Sub-Surface Telemetry (Open-Meteo):**
+  * Sub-surface soil temperature at $0\,\text{cm}$ and $6\,\text{cm}$.
+  * Volumetric soil moisture at $0\text{--}1\,\text{cm}$ and $1\text{--}3\,\text{cm}$.
+  * Real-time automated **"Vapsa" (वतर)** seedbed moisture status verdict.
+* **Calibrated Regional Indian Presets:** 1-click geolocation switching across major agricultural belts (Punjab, Maharashtra, Karnataka, Thar Desert, UP/Bihar Terai, Kerala, Bengal Delta).
+* **Target Crop Viability Evaluator ("Can I grow crop X here?"):**
+  * Root-cause diagnostic identifying exact limiting factors (pH bottleneck, off-season timing, water deficit, clay compaction).
+  * Actionable corrective prescriptions (Agricultural Lime $\text{CaCO}_3$ dosages, Agricultural Gypsum, Elemental Sulfur, Sesbania green manuring, drip scheduling).
+* **Categorized Crop Recommendations:** Ranked multi-tier recommendations for **Top Vegetables**, **Top Fruits & Horticulture**, and **Top Staples & Cash Crops** calibrated for the field's GPS soil and seasonal window.
 
-### 🛰️ 2. Multi-Spectral Satellite Field Monitoring
+### 🌿 2. AI Crop Health & Foliar Disease Diagnostic Studio
+* **Any Crop Photo Intake:** Accepts **ANY crop leaf, stem, or plant photo** uploaded by the user or captured directly via the real-time HTML5 camera (with front/rear lens switching).
+* **AI Plant Pathology Detection Engine:**
+  * Analyzes foliar visual indicators: chlorosis distribution, necrotic target rings, pustule patterns, mosaic leaf curling, and canopy brightness/saturation degradation.
+  * Diagnoses diseases across major Indian crop systems (Tomato, Potato, Wheat, Rice/Paddy, Cotton, Mustard, Maize, Soybean, Sugarcane, Chili, Grapevine) and universal general foliage:
+    * **Early & Late Blights** (*Alternaria solani*, *Phytophthora infestans*)
+    * **Yellow Stripe & Brown Rusts** (*Puccinia striiformis*, *Puccinia triticina*)
+    * **Rice Blast & Bacterial Leaf Blight** (*Magnaporthe oryzae*, *Xanthomonas oryzae*)
+    * **Viral Leaf Curl Syndromes** (*Begomovirus* vectored by Whiteflies)
+    * **White Rust & Staghead** (*Albugo candida*)
+    * **Anthracnose, Leaf Spots & Nutrient Chlorosis**
+* **Comprehensive Diagnostic Report:**
+  * **Crop Vitality Score (0-100%)** and Health Status badge (*Healthy*, *Mild Stress*, *Moderate Disease*, *Severe Infection*).
+  * **Bilingual Nomenclature:** Primary diagnosed condition presented in English and Hindi (e.g., *Early Blight (Alternaria solani) · अगेती झुलसा रोग*).
+  * **Pathogen Classification:** Identifies pathogen type (*Fungal*, *Bacterial*, *Viral*, *Pest Infestation*, *Nutrient Deficiency*, or *Healthy Foliage*).
+  * **Visible Symptoms Observed:** Itemized list of detected lesions, target spots, chlorotic halos, or curling patterns.
+  * **Pathology Notes:** Detailed agronomic explanation of how the pathogen invades tissues and spreads across fields.
+* **Weather & Soil Telemetry Correlation:**
+  * Direct agronomic attribution explaining how ambient temperature, relative humidity, recent 7-day rainfall, and soil moisture enabled pathogen germination (e.g., humidity >75% at 24°C facilitating conidial spore incubation within 6-8 hours).
+* **3-Pillar Treatment Protocol:**
+  1. **Fast-Acting Chemical Curatives:** Exact active ingredients, commercial brand names (e.g., Mancozeb 75% WP, Azoxystrobin + Difenoconazole, Tricyclazole, Imidacloprid), and recommended dosages per liter of water.
+  2. **Biological & Organic Controls:** Bio-control agents (*Trichoderma viride*, *Pseudomonas fluorescens*, Neem Oil 10,000 ppm, bio-fungicides) with application and preparation directions.
+  3. **Cultural & Preventative Practices:** Agronomic sanitation, lower foliage pruning, drip irrigation scheduling, and crop rotation guidelines.
+* **1-Click Disease Testing Presets:** Instant testing samples for Tomato Early Blight, Rice Blast, Wheat Stripe Rust, Cotton Leaf Curl, Mustard White Rust, and Maize Foliar Blight.
+
+### 🛰️ 3. Multi-Spectral Satellite Field Monitoring
 * **Vegetation & Water Indices:** Automatic computation of **NDVI**, **EVI**, **SAVI** (with calibrated soil adjustment factor $L$), and **NDWI** derived from ESA **Sentinel-2** 10-meter imagery.
 * **Automated STAC Ingestion:** Element 84 Earth Search STAC catalog integration with 24-month historical backfill and weekly auto-update cycles.
 * **ML Field Boundary Detection:** Automatic field boundary extraction using the FTW (Fields of The World) deep learning model with polygon review workflows.
