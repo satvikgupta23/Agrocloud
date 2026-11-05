@@ -1625,9 +1625,10 @@ export function CropDiagnosticStudio() {
             )}
 
             {/* ───────────────────────────────────────────────────────────── */}
-            {/* COMMON RESULTS SECTION: DOSSIER, RECOMMENDATIONS & HYDROLOGY */}
+            {/* GPS SOIL RESULTS SECTION: DOSSIER, RECOMMENDATIONS & HYDROLOGY */}
+            {/* (Displayed only in GPS Soil & Field Intelligence Section)      */}
             {/* ───────────────────────────────────────────────────────────── */}
-            {diagnosticResult && (
+            {studioTab === "gps_soil" && diagnosticResult && (
                 <div id="agrocloud-results-container" className="space-y-8 pt-4">
                     {/* SECTION 1: TARGET CROP VIABILITY DOSSIER */}
                     <div id="target-crop-viability-dossier" className="p-6 rounded-2xl bg-surface-1 border border-border/60 shadow-sm space-y-6">
