@@ -25,17 +25,41 @@ Rather than only showing that vegetation health has dropped, AgroCloud correlate
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features & Latest Updates
 
 ### 🔬 1. Soil & Crop Diagnostic Studio
-* **Interactive Diagnostic Studio:** Instant upload or camera capture for multi-spectral crop leaf and soil photo analysis.
-* **68 Calibrated Agro-Ecological Crop Profiles:** Comprehensive models covering cereals, pulses, vegetables, oilseeds, cash crops, and horticulture (Wheat, Paddy/Rice, Maize, Cotton, Tomato, Soybean, Mustard, Sugarcane, Grapevine, etc.).
-* **Live Weather & Soil Telemetry:** Integrates directly with **Open-Meteo** and **ISRIC SoilGrids 2.0**:
-  * Real-time ambient temperature, humidity, wind velocity, and precipitation.
-  * Sub-surface soil temperature ($0\,\text{cm}$ and $6\,\text{cm}$) and volumetric soil moisture ($0\text{--}1\,\text{cm}$, $1\text{--}3\,\text{cm}$).
-  * Cumulative **Growing Degree Days (GDD)** and reference **Evapotranspiration ($\text{ET}_0$)**.
-  * Soil chemical and physical parameters: pH, Soil Organic Carbon (SOC), Cation Exchange Capacity (CEC), and USDA texture classification (clay/sand/silt).
-* **Automated Agronomic Recommendations:** Actionable guidance for fertilizer application (NPK schedules), irrigation timing, soil amendment suggestions, and disease/stress remedies.
+* **Interactive Diagnostic Studio:** Instant upload or live camera capture for multi-spectral crop leaf and soil photo analysis.
+* **Real-Time Camera Integration:** Full HTML5 `getUserMedia` camera support with rear/front lens switching (`environment` vs `user`), live preview, and fallback image picker.
+* **In-Browser Computer Vision Pixel Extraction:**
+  * Client-side canvas sampling for average RGB, Hue, Saturation, Brightness, and Luminance.
+  * Correlation with standard **Munsell Soil Color Charts** (e.g., 10YR 5/3 Alluvial, 10YR 2/2 Black Vertisol, 5YR 4/6 Red Loam, 2.5YR 4/8 Laterite, 10YR 7/4 Arid Desert Sand, 10YR 3/3 Terai Loam).
+  * Automated deduction of structural tilth, visual organic matter, surface crusting risk, and drainage aeration.
+* **34 Calibrated Agro-Ecological Indian Crop Profiles:**
+  * **Vegetables (सब्जियां):** Tomato (Tamatar), Potato (Aloo), Onion (Pyaz), Chili (Mirch), Brinjal (Baingan), Cauliflower (Phoolgobhi), Cabbage (Patthogobhi), Green Peas (Matar), Okra (Bhindi), Carrot (Gajar), Garlic (Lahsun), Spinach (Palak), Cucumber (Kheera), Bitter Gourd (Karela).
+  * **Fruits & Horticulture (फल व बागवानी):** Mango (Aam), Guava (Amrud), Pomegranate (Anar), Papaya (Papita), Banana (Kela), Lemon (Nimbu), Watermelon (Tarbooz), Grapes (Angoor), Indian Jujube (Ber), Cashew (Kaju).
+  * **Staples, Cereals, Pulses & Cash Crops (अनाज, दलहन व नकदी):** Wheat (Gehun), Rice / Paddy (Dhan), Maize (Makka), Bajra (Pearl Millet), Chickpea / Bengal Gram (Chana), Mustard (Sarson), Soybean, Groundnut (Moongphali), Cotton (Kapas), Sugarcane (Ganna).
+* **Categorized Multi-Tier Recommendations:**
+  * Dedicated tabs for **Top Vegetables**, **Top Fruits & Horticulture**, and **Top Staples & Cash Crops**, along with overall suitability rankings.
+* **Dynamic Indian Agricultural Season Engine:**
+  * Real-time calendar alignment detecting **Rabi (रबी)**, **Kharif (खरीफ)**, or **Zaid (जायद)** seasons.
+  * Season-weighted suitability scoring favoring crops within their active sowing and growth calendar.
+* **Target Crop Agronomic Viability Evaluation ("Can I grow crop X here?"):**
+  * **"Why No" Root-Cause Diagnosis:** Detects specific limiting factors including soil pH extremes (acidity/alkalinity), off-season heat/cold stress, rainfall deficit, clay compaction, or insufficient organic carbon.
+  * **"What to Change" Actionable Remedies:** Delivers precise corrective prescriptions (e.g., Agricultural Lime $\text{CaCO}_3$ dosages for acidic soils, Agricultural Gypsum or Elemental Sulfur with canal flushing for alkaline soils, Sesbania green manuring, drip irrigation scheduling, and organic manure incorporation).
+* **Calibrated Regional Indian Soil & Climate Presets:**
+  * Indo-Gangetic Alluvial Loam (Punjab / Haryana)
+  * Deccan Black Vertisol (Maharashtra / Vidarbha)
+  * Red Sandy Loam (Karnataka / South Deccan)
+  * Desert Arid Sandy Soil (Rajasthan / Thar Basin)
+  * Acidic Laterite Soil (Kerala / Western Ghats)
+  * Terai Wetland Clay Loam (Uttar Pradesh / Bihar)
+* **Live Environmental Telemetry (Open-Meteo & ISRIC SoilGrids 2.0):**
+  * Live ambient temperature, relative humidity, wind speed, and precipitation.
+  * Sub-surface soil temperature ($0\,\text{cm}$ and $6\,\text{cm}$) and volumetric soil moisture ($0\text{--}1\,\text{cm}$ and $1\text{--}3\,\text{cm}$).
+  * Automated **"Vapsa" (वतर)** seedbed moisture status verdict.
+  * 7-day cumulative **Growing Degree Days (GDD)**, daily GDD accumulation rate, and reference **Evapotranspiration ($\text{ET}_0$)**.
+  * Soil chemical and physical parameters: pH, Soil Organic Carbon (SOC), Cation Exchange Capacity (CEC), and USDA texture classification.
+  * Built-in direct client fallbacks ensuring uninterrupted operation if local API proxies are offline.
 
 ### 🛰️ 2. Multi-Spectral Satellite Field Monitoring
 * **Vegetation & Water Indices:** Automatic computation of **NDVI**, **EVI**, **SAVI** (with calibrated soil adjustment factor $L$), and **NDWI** derived from ESA **Sentinel-2** 10-meter imagery.
@@ -79,7 +103,7 @@ AgroCloud follows a decoupled, 3-layer service-oriented architecture:
 | Layer | Technologies |
 |---|---|
 | **Web Frontend** | [Next.js 14](https://nextjs.org/) (App Router), [React 18](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), [MapLibre GL](https://maplibre.org/), [Apache ECharts](https://echarts.apache.org/) |
-| **Backend Services** | [FastAPI](https://fastapi.tiangolo.com/), [Python 3.11](https://python.org/), [Pydantic v2](https://docs.pydantic.dev/), [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (async), [Alembic](https://alembic.sqlalchemy.org/) |
+| **Backend Services** | [FastAPI](https://fastapi.tiangolo.com/), [Python 3.11](https://python.org/), [Pydantic v2](https://docs.pydantic.dev/), [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (async), [Alembic](https://alembic.sqlalchemy.org/), [Uvicorn](https://www.uvicorn.org/) |
 | **Telemetry & Data** | [Open-Meteo API](https://open-meteo.com/), [ISRIC SoilGrids 2.0](https://soilgrids.org/), [Element 84 STAC](https://element84.com/earth-search/), [Sentinel-2](https://dataspace.copernicus.eu) |
 | **Geospatial & Storage** | [TiTiler](https://developmentseed.org/titiler/) (Cloud-Optimized GeoTIFFs), [PostgreSQL](https://www.postgresql.org/) / [PostGIS](https://postgis.net/), [MinIO](https://min.io/) S3 object storage |
 
@@ -118,6 +142,8 @@ cd apps/web
 npm install
 npm run dev
 ```
+> **Windows Tip:** If PowerShell script execution policy restricts `npm.ps1`, use `npm.cmd run dev`.
+
 Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 #### 4. Run the FastAPI Backend
@@ -161,11 +187,11 @@ Agrocloud/
 │           ├── app/
 │           │   ├── [locale]/              # Localized application routes & dashboard
 │           │   └── api/                   # Next.js serverless API routes
-│           │       ├── analyze-crop/      # Crop diagnostic engine
+│           │       ├── analyze-crop/      # Crop diagnostic engine & suitability scorer
 │           │       ├── soil/              # SoilGrids telemetry proxy
 │           │       └── weather/           # Open-Meteo weather telemetry proxy
 │           ├── components/
-│           │   ├── crop-diagnostic-studio.tsx  # Soil & Crop Studio interface
+│           │   ├── crop-diagnostic-studio.tsx  # Soil & Crop Studio interface & live camera
 │           │   ├── landing-page.tsx            # Modern AgroCloud landing interface
 │           │   └── sidebar.tsx                 # Navigation & workspace management
 │           └── lib/                       # API clients, auth, and utilities
@@ -180,7 +206,8 @@ Agrocloud/
 │   │   │   │   ├── weather.py             # Meteorological integrations
 │   │   │   │   └── soil.py                # Soil profile endpoints
 │   │   │   └── tasks/                     # Celery asynchronous background tasks
-│   │   └── pyproject.toml
+│   │   ├── pyproject.toml
+│   │   └── uv.lock
 │   └── tiler/                             # TiTiler Cloud-Optimized GeoTIFF raster server
 ├── docker-compose.yml                     # Multi-container production stack
 ├── docker-compose.dev.yml                 # Local development overrides
