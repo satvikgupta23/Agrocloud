@@ -52,9 +52,11 @@ Rather than only showing that vegetation health has dropped, AgroCloud correlate
   * Root-cause diagnostic identifying exact limiting factors (pH bottleneck, off-season timing, water deficit, clay compaction).
   * Actionable corrective prescriptions (Agricultural Lime $\text{CaCO}_3$ dosages, Agricultural Gypsum, Elemental Sulfur, Sesbania green manuring, drip scheduling).
 * **Categorized Crop Recommendations:** Ranked multi-tier recommendations for **Top Vegetables**, **Top Fruits & Horticulture**, and **Top Staples & Cash Crops** calibrated for the field's GPS soil and seasonal window.
+* **Dedicated Soil & Field Scope:** Houses the complete field intelligence suite including the Target Crop Viability Dossier, Categorized Crop Recommendations, Monsoon Hydrology & Water Balance, and the AgroCloud Precision Action Plan.
 
 ### 🌿 2. AI Crop Health & Foliar Disease Diagnostic Studio
 * **Any Crop Photo Intake:** Accepts **ANY crop leaf, stem, or plant photo** uploaded by the user or captured directly via the real-time HTML5 camera (with front/rear lens switching).
+* **Focused Pathology Interface:** Provides a streamlined, uncluttered disease diagnostic view focused exclusively on plant pathology, foliar health metrics, pathogen identification, and actionable treatment protocols (isolating soil suitability dossiers to the GPS Soil section).
 * **AI Plant Pathology Detection Engine:**
   * Analyzes foliar visual indicators: chlorosis distribution, necrotic target rings, pustule patterns, mosaic leaf curling, and canopy brightness/saturation degradation.
   * Diagnoses diseases across major Indian crop systems (Tomato, Potato, Wheat, Rice/Paddy, Cotton, Mustard, Maize, Soybean, Sugarcane, Chili, Grapevine) and universal general foliage:
@@ -83,13 +85,13 @@ Rather than only showing that vegetation health has dropped, AgroCloud correlate
 * **Automated STAC Ingestion:** Element 84 Earth Search STAC catalog integration with 24-month historical backfill and weekly auto-update cycles.
 * **ML Field Boundary Detection:** Automatic field boundary extraction using the FTW (Fields of The World) deep learning model with polygon review workflows.
 
-### 📊 3. Agronomic Risk & Multi-Signal Stress Engine
+### 📊 4. Agronomic Risk & Multi-Signal Stress Engine
 * **Water Balance & Stress Attribution:** Real-time water balance tracking ($\text{Rainfall} - \text{ET}_0$) to separate drought stress from pathology.
 * **Soil Health Risk Indicators:** Automatic computation of acidification, compaction, nutrient leaching, waterlogging, and rooting impediment risks.
 * **Smart Soil Sampling Zones:** Clustered zone recommendations based on intra-field spatial variability.
 * **Carbon Sequestration Estimation:** Baseline topsoil carbon stock calculations across field boundaries.
 
-### 🌐 4. Enterprise-Grade Delivery Surfaces
+### 🌐 5. Enterprise-Grade Delivery Surfaces
 * **MapLibre GL Vector & Raster Mapping:** High-performance mapping with PMTiles basemaps, custom index colormaps, and interactive field polygon inspection.
 * **Interactive Time-Series (Apache ECharts):** Percentile distribution bands, NDVI timelines, and overlaid meteorological graphs.
 * **Multi-Tenant Organization Architecture:** Tenant isolation via `X-Org-Id` and JWT session headers with granular RBAC (`owner`, `admin`, `member`, `viewer`).
